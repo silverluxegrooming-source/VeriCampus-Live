@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VeriCampus | Student Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-50 h-screen flex flex-col font-sans">
+
+    <!-- HEADER -->
+    <div class="bg-blue-900 text-white p-4 shadow-md flex justify-between items-center z-10">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-white rounded-full flex items-center justify-center text-blue-900 font-bold shadow">V</div>
+            <div>
+                <h1 class="font-bold text-lg">VeriCampus</h1>
+                <p class="text-xs text-blue-200" id="school-display">Select Your School</p>
+            </div>
+        </div>
+        <div class="text-xs bg-green-500 px-3 py-1 rounded-full text-white animate-pulse">Online</div>
+    </div>
+
+    <!-- LOGIN SCREEN (The Gatekeeper) -->
+    <div id="login-screen" class="flex-1 flex items-center justify-center p-4">
+        <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md text-center">
+            <div class="mb-6 text-6xl text-blue-900"><i class="fas fa-university"></i></div>
+            <h2 class="text-2xl font-bold text-gray-800 mb-2">Welcome Student</h2>
+            <p class="text-gray-500 mb-6">Enter your School ID to access your campus brain.</p>
+            
+            <input type="text" id="school-id-input" placeholder="e.g., UNILAG, COVENANT" 
+                   class="w-full bg-gray-50 border border-gray-300 rounded-lg px-4 py-3 text-gray-800 focus:ring-2 focus:ring-blue-900 outline-none mb-4 uppercase font-bold tracking-wide text-center">
+            
+            <button onclick="login()" class="w-full bg-blue-900 hover:bg-blue-800 text-white font-bold py-3 rounded-lg transition transform hover:scale-105">
+                Enter Campus
+            </button>
+        </div>
+    </div>
+
+    <!-- CHAT SCREEN (Hidden until login) -->
+    <div id="chat-screen" class="hidden flex-1 flex flex-col h-full overflow-hidden">
+        <div id="chat-box" class="flex-1 overflow-y-auto p-4 space-y-4 pb-20">
+            <div class="flex justify-start">
+                <div class="bg-white border border-gray-200 rounded-2xl rounded-tl-none p-4 max-w-[85%] shadow-sm text-sm text-gray-800">
+                    <p class="font-bold text-blue-900 mb-1">VeriCampus AI</p>
+                    <p>Hello! I have loaded the knowledge base for <span id="school-name-chat" class="font-bold text-blue-600"></span>. Ask me anything.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="p-4 bg-white border-t shadow-lg">
+            <div class="flex gap-2 max-w-4xl mx-auto">
+                <input type="text" id="user-input" class="flex-1 bg-gray-100 border-0 rounded-full px-6 py-3 focus:outline-none focus:ring-2 focus:ring-blue-900" placeholder="Type your question...">
+                <button onclick="sendMessage()" class="bg-blue-900 text-white w-12 h-12 rounded-full hover:bg-blue-800 flex items-center justify-center shadow-lg">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentSchoolID = "";
+
+        function login() {
+            const input = document.getElementById('school-id-input').value.trim();
+            if(!input) return alert("Please enter a School Name or ID");
+            
+            currentSchoolID = input.toUpperCase();
+            
+            // Swap Screens
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('chat-screen').classList.remove('hidden');
+            document.getElementById('chat-screen').classList.add('flex');
+            
+            // Update Headers
+            document.getElementById('school-display').innerText = currentSchoolID;
+            document.getElementById('school-name-chat').innerText = currentSchoolID;
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('user-input');
+            const message = input.value;
+            if (!message) return;
+            
+            const chatBox = document.getElementById('chat-box');
+            chatBox.innerHTML += `<div class="flex justify-end"><div class="bg-blue-600 text-white rounded-2xl rounded-tr-none p-4 max-w-[85%] shadow-md text-sm">${message}</div></div>`;
+            input.value = '';
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            try {
+                const loadingId = "loading-" + Date.now();
+                chatBox.innerHTML += `<div id="${loadingId}" class="flex justify-start"><div class="bg-gray-200 rounded-2xl rounded-tl-none p-3 text-gray-500 text-xs animate-pulse">Thinking...</div></div>`;
+                chatBox.scrollTop = chatBox.scrollHeight;
+
+                const formData = new FormData();
+                formData.append('question', message);
+                formData.append('school_id', currentSchoolID); // Important: Sends the ID
+                
+                const response = await fetch(`/chat`, { method: 'POST', body: formData });
+                const data = await response.json();
+                
+                document.getElementById(loadingId).remove();
+                chatBox.innerHTML += `<div class="flex justify-start"><div class="bg-white border border-gray-200 rounded-2xl rounded-tl-none p-4 max-w-[85%] shadow-sm text-sm text-gray-800"><p class="font-bold text-blue-900 mb-1">VeriCampus AI</p><p>${data.answer.replace(/\n/g, '<br>')}</p></div></div>`;
+                chatBox.scrollTop = chatBox.scrollHeight;
+            } catch (err) {
+                alert("Error. Check Server.");
+            }
+        }
+    </script>
+</body>
+</html>
