@@ -7,8 +7,8 @@ langchain-huggingface
 langchain-text-splitters
 langchain-community
 langchain-core
-faiss-cpu
+langchain-pinecone
+pinecone-client
 pypdf
 sentence-transformers
 jinja2
-huggingface-hub

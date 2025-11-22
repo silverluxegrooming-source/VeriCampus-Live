@@ -1,29 +1,37 @@
 import os
 import time
-import shutil
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
 from langchain_huggingface import HuggingFaceEndpointEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.vectorstores import FAISS
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
+from langchain_pinecone import PineconeVectorStore
+from pinecone import Pinecone, ServerlessSpec
 
 load_dotenv()
 
-# --- CONFIGURATION ---
-DB_FOLDER = "school_data"
-if not os.path.exists(DB_FOLDER):
-    os.makedirs(DB_FOLDER)
+# Initialize Keys
+if not os.getenv("GROQ_API_KEY"): raise ValueError("GROQ_API_KEY missing")
+if not os.getenv("HUGGINGFACEHUB_API_TOKEN"): raise ValueError("HUGGINGFACEHUB_API_TOKEN missing")
+if not os.getenv("PINECONE_API_KEY"): raise ValueError("PINECONE_API_KEY missing")
 
-# 1. Setup AI Models
+print("Connecting to Cloud Systems...")
+
+# 1. READER (Embeddings)
 embeddings = HuggingFaceEndpointEmbeddings(
     model="sentence-transformers/all-MiniLM-L6-v2",
     huggingfacehub_api_token=os.getenv("HUGGINGFACEHUB_API_TOKEN")
 )
 
+# 2. DATABASE (Pinecone)
+# Initialize Pinecone connection
+pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
+index_name = "vericampus-db" # Must match what you created on website
+
+# 3. TALKER (Groq)
 llm = ChatGroq(
     model="llama-3.3-70b-versatile",
     temperature=0.3,
@@ -31,103 +39,61 @@ llm = ChatGroq(
     api_key=os.getenv("GROQ_API_KEY")
 )
 
-# Global Storage
-vector_store_cache = {}
-real_time_updates = [] # <--- Added this back!
-
-# --- CORE FUNCTIONS ---
-
-def get_school_path(school_id):
-    """Returns the folder path for a specific school's data"""
-    clean_id = school_id.strip().lower().replace(" ", "_")
-    return os.path.join(DB_FOLDER, clean_id)
-
-def load_school_brain(school_id):
-    """Loads a specific school's brain from disk into memory"""
-    path = get_school_path(school_id)
-    
-    # If already in memory, return it
-    if school_id in vector_store_cache:
-        return vector_store_cache[school_id]
-    
-    # If on disk, load it
-    if os.path.exists(path):
-        print(f"Loading brain for {school_id} from disk...")
-        try:
-            store = FAISS.load_local(path, embeddings, allow_dangerous_deserialization=True)
-            vector_store_cache[school_id] = store
-            return store
-        except Exception as e:
-            print(f"Error loading brain: {e}")
-            return None
-            
-    return None
+real_time_updates = [] 
 
 def process_pdf(file_path, school_id):
-    """Reads PDF and saves it into the SPECIFIC school's locker"""
     print(f"Processing PDF for School: {school_id}...")
-    
     loader = PyPDFLoader(file_path)
     docs = loader.load()
     
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
     all_splits = text_splitter.split_documents(docs)
     
-    # Process in batches
-    batch_size = 5
-    vector_store = load_school_brain(school_id)
+    print(f"Uploading {len(all_splits)} chunks to Pinecone Cloud...")
     
-    for i in range(0, len(all_splits), batch_size):
-        batch = all_splits[i:i+batch_size]
-        print(f"Processing batch {i}...")
-        try:
-            if vector_store is None:
-                vector_store = FAISS.from_documents(batch, embeddings)
-            else:
-                vector_store.add_documents(batch)
-            time.sleep(1)
-        except Exception as e:
-            return f"Failed at batch {i}: {e}"
+    # We save data into a specific "Namespace" for the school
+    # This ensures UNILAG data stays separate from FUTO data
+    PineconeVectorStore.from_documents(
+        documents=all_splits,
+        embedding=embeddings,
+        index_name=index_name,
+        namespace=school_id.upper() 
+    )
             
-    # SAVE TO DISK
-    save_path = get_school_path(school_id)
-    vector_store.save_local(save_path)
-    vector_store_cache[school_id] = vector_store
-    
+    print("Done! Data Saved Permanently.")
     return f"Success! Saved to {school_id} database."
 
-# <--- Added this function back!
 def add_realtime_update(update_text, author):
-    real_time_updates.append(f"URGENT UPDATE from {author}: {update_text}")
-    return "Update broadcasted to all schools."
+    real_time_updates.append(f"URGENT: {author} says: {update_text}")
+    return "Update broadcasted."
 
 def ask_vericampus(question, school_id):
-    """Asks a question to a SPECIFIC school's brain"""
-    vector_store = load_school_brain(school_id)
+    # Connect to the specific School's Cloud Memory
+    vector_store = PineconeVectorStore(
+        index_name=index_name,
+        embedding=embeddings,
+        namespace=school_id.upper()
+    )
     
-    if not vector_store:
-        return "No data found for this School ID. Please upload a handbook first."
-
     retriever = vector_store.as_retriever()
     
-    # Updated template to include Real-Time Info again
-    template = """You are VeriCampus, the AI Assistant for {school_id}. 
-    Answer the student's question based on the context below.
+    template = """You are VeriCampus. Answer the question based on the context below.
     
     Context: {context}
     
-    Real-Time Updates: {real_time_info}
+    Updates: {real_time_info}
     
     Question: {question}
     
     Answer:"""
     
     prompt = ChatPromptTemplate.from_template(template)
+    rt_context = "\n".join(real_time_updates) if real_time_updates else "None"
     
-    rt_context = "\n".join(real_time_updates) if real_time_updates else "No active updates."
+    def format_docs(docs): return "\n\n".join([d.page_content for d in docs])
     
     chain = (
-        {"context": retriever, "question": RunnablePassthrough(), "school_id": lambda x: school_id, "real_time_info": lambda x: rt_context}
+        {"context": retriever | format_docs, "question": RunnablePassthrough(), "real_time_info": lambda x: rt_context}
         | prompt | llm | StrOutputParser()
     )
     return chain.invoke(question)
