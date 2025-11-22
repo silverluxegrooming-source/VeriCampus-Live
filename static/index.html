@@ -3,202 +3,257 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>VeriCampus Chat</title>
+    <title>VeriCampus Portal</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    
-    <!-- PWA Manifest Link -->
     <link rel="manifest" href="/static/manifest.json">
-    
-    <!-- Mobile App Meta Tags -->
-    <meta name="theme-color" content="#075E54">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    
+    <meta name="theme-color" content="#1e3a8a">
     <style>
-        /* WhatsApp-like Styling */
-        body {
-            background-color: #e5ddd5;
-            /* WhatsApp Doodle Background Pattern */
-            background-image: url("https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png");
-            background-repeat: repeat;
-            background-size: 400px; 
-        }
-        .chat-bubble-user {
-            background-color: #dcf8c6;
-            border-radius: 7px 0 7px 7px;
-            box-shadow: 0 1px 0.5px rgba(0,0,0,0.13);
-            max-width: 85%;
-            align-self: flex-end;
-            position: relative;
-        }
-        .chat-bubble-ai {
-            background-color: #ffffff;
-            border-radius: 0 7px 7px 7px;
-            box-shadow: 0 1px 0.5px rgba(0,0,0,0.13);
-            max-width: 85%;
-            align-self: flex-start;
-            position: relative;
-        }
-        /* Hide Scrollbar for clean look */
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #bbb; border-radius: 2px; }
+        body { background-color: #f0f2f5; }
+        .chat-bg { background-color: #eef2ff; background-image: radial-gradient(#e0e7ff 1px, transparent 1px); background-size: 20px 20px; }
+        .msg-sent { background: #1e3a8a; color: white; border-radius: 12px 12px 0 12px; max-width: 85%; align-self: flex-end; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .msg-received { background: #ffffff; color: #1f2937; border-radius: 12px 12px 12px 0; max-width: 85%; align-self: flex-start; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .active-chat { background-color: #eff6ff; border-left: 4px solid #1e3a8a; }
     </style>
 </head>
-<body class="h-screen flex flex-col overflow-hidden font-sans">
+<body class="h-screen flex overflow-hidden font-sans text-gray-800">
 
-    <!-- HEADER -->
-    <div class="bg-[#075E54] text-white p-3 shadow-md flex justify-between items-center z-20">
-        <div class="flex items-center gap-3">
-            <div class="w-10 h-10 bg-white rounded-full flex items-center justify-center text-[#075E54] font-bold text-xl shadow-sm">V</div>
-            <div class="flex flex-col">
-                <h1 class="font-bold text-lg leading-tight">VeriCampus</h1>
-                <p class="text-[10px] text-green-100 truncate w-40" id="header-status">Tap to Login</p>
-            </div>
+    <!-- SIDEBAR (School List) -->
+    <div id="sidebar" class="w-80 bg-white border-r border-gray-200 flex flex-col hidden md:flex z-20 absolute md:relative h-full shadow-xl">
+        <!-- Sidebar Header -->
+        <div class="p-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
+            <h2 class="font-bold text-xl text-blue-900">My Campuses</h2>
+            <button onclick="toggleSidebar()" class="md:hidden text-gray-500"><i class="fas fa-times"></i></button>
         </div>
-        <div class="flex items-center gap-4">
-             <!-- Reload Button -->
-             <button onclick="location.reload()" class="text-white opacity-80 hover:opacity-100"><i class="fas fa-sync-alt"></i></button>
+
+        <!-- School List -->
+        <div id="school-list" class="flex-1 overflow-y-auto p-2 space-y-1">
+            <!-- Schools will be injected here by JS -->
+        </div>
+
+        <!-- Add New School Button -->
+        <div class="p-4 border-t border-gray-100">
+            <button onclick="showLoginModal()" class="w-full bg-blue-900 text-white py-3 rounded-xl font-bold shadow-md hover:bg-blue-800 transition flex items-center justify-center gap-2">
+                <i class="fas fa-plus-circle"></i> Add New School ID
+            </button>
         </div>
     </div>
 
-    <!-- LOGIN MODAL (Overlay) -->
-    <div id="login-screen" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-opacity duration-300">
-        <div class="bg-white w-full max-w-sm rounded-xl shadow-2xl overflow-hidden">
-            <div class="bg-[#075E54] p-6 text-center relative">
-                <div class="absolute top-4 right-4 text-white/20 text-6xl"><i class="fas fa-shield-alt"></i></div>
-                <h2 class="text-xl font-bold text-white relative z-10">Student Access</h2>
-                <p class="text-green-100 text-xs relative z-10">Enter your School Code to begin</p>
+    <!-- MAIN CHAT AREA -->
+    <div class="flex-1 flex flex-col h-full relative bg-white">
+        
+        <!-- Chat Header -->
+        <div class="bg-white p-3 shadow-sm flex items-center justify-between border-b border-gray-100 z-10">
+            <div class="flex items-center gap-3">
+                <button onclick="toggleSidebar()" class="md:hidden text-blue-900 p-2"><i class="fas fa-bars text-xl"></i></button>
+                <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-900 font-bold text-lg">
+                    <i class="fas fa-university"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-gray-800 leading-tight" id="current-school-name">Select a School</h1>
+                    <p class="text-xs text-green-600 flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 bg-green-500 rounded-full"></span> Online
+                    </p>
+                </div>
+            </div>
+            <button onclick="clearChat()" class="text-gray-400 hover:text-red-500 p-2" title="Clear History"><i class="fas fa-trash-alt"></i></button>
+        </div>
+
+        <!-- Messages -->
+        <div id="chat-box" class="flex-1 overflow-y-auto p-4 space-y-3 flex flex-col chat-bg pb-24">
+            <div class="flex justify-center mt-10 opacity-50">
+                <div class="text-center">
+                    <i class="fas fa-comments text-4xl text-blue-200 mb-2"></i>
+                    <p class="text-sm text-gray-400">Select or Add a School ID to start chatting</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="bg-white p-3 border-t border-gray-100 absolute bottom-0 w-full">
+            <div class="flex gap-2 max-w-4xl mx-auto bg-gray-100 p-1 rounded-full border border-gray-200">
+                <input type="text" id="user-input" 
+                       class="flex-1 bg-transparent border-0 px-4 py-2 text-sm focus:outline-none text-gray-800 placeholder-gray-500" 
+                       placeholder="Type your question..." 
+                       disabled
+                       onkeypress="handleEnter(event)">
+                <button onclick="sendMessage()" id="send-btn" class="bg-blue-900 text-white w-10 h-10 rounded-full flex items-center justify-center shadow-sm hover:bg-blue-800 transition disabled:opacity-50" disabled>
+                    <i class="fas fa-paper-plane text-sm pl-0.5"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- LOGIN MODAL -->
+    <div id="login-modal" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden transform transition-all scale-100">
+            <div class="bg-blue-900 p-6 text-center">
+                <i class="fas fa-shield-alt text-4xl text-white/90 mb-2"></i>
+                <h2 class="text-xl font-bold text-white">Add New Access</h2>
             </div>
             <div class="p-6 space-y-4">
                 <div>
-                    <label class="text-xs font-bold text-gray-500 uppercase tracking-wide">School ID</label>
-                    <input type="text" id="school-id-input" placeholder="e.g. FUTO-2845" 
-                           class="w-full mt-1 px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-lg text-gray-900 focus:border-[#075E54] focus:ring-0 outline-none uppercase font-bold text-center tracking-widest text-lg transition-colors">
+                    <label class="text-xs font-bold text-gray-500 uppercase">School / Dept ID</label>
+                    <input type="text" id="new-school-id" placeholder="e.g. FUTO-2845" 
+                           class="w-full mt-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-center font-bold text-lg tracking-widest uppercase focus:ring-2 focus:ring-blue-900 outline-none">
                 </div>
-                <button onclick="login()" class="w-full bg-[#128C7E] hover:bg-[#075E54] text-white font-bold py-3.5 rounded-lg transition shadow-lg transform active:scale-95">
-                    Start Chatting
-                </button>
-            </div>
-            <div class="bg-gray-50 p-3 text-center border-t border-gray-100">
-                <p class="text-[10px] text-gray-400">Protected by VeriCampus Hybrid RAG</p>
+                <div class="flex gap-2">
+                    <button onclick="closeLoginModal()" class="flex-1 py-3 rounded-xl font-bold text-gray-500 hover:bg-gray-100">Cancel</button>
+                    <button onclick="addNewSchool()" class="flex-1 bg-blue-900 text-white py-3 rounded-xl font-bold shadow-lg hover:bg-blue-800">Add</button>
+                </div>
             </div>
         </div>
-    </div>
-
-    <!-- CHAT AREA -->
-    <div id="chat-box" class="flex-1 overflow-y-auto p-4 space-y-2 flex flex-col pb-20">
-        <!-- Encryption Notice -->
-        <div class="flex justify-center my-4">
-            <span class="bg-[#fff5c4] text-gray-600 text-[10px] px-3 py-1 rounded-lg shadow-sm text-center">
-                <i class="fas fa-lock text-[8px] mr-1"></i> Messages are processed securely via Cloud Brain
-            </span>
-        </div>
-        
-        <!-- AI Welcome Message -->
-        <div class="chat-bubble-ai p-2 px-3">
-            <p class="text-sm text-gray-800 leading-snug">
-                👋 Hello! I am ready. Please enter your School ID to connect to your campus database.
-            </p>
-            <div class="text-[10px] text-gray-400 text-right mt-1 flex justify-end items-center gap-1">
-                <span>Now</span>
-            </div>
-        </div>
-    </div>
-
-    <!-- INPUT AREA -->
-    <div class="bg-[#f0f0f0] p-2 px-3 flex items-center gap-2 fixed bottom-0 w-full z-20 safe-area-pb">
-        <div class="flex-1 bg-white rounded-full flex items-center px-4 py-2 shadow-sm border border-gray-200">
-            <input type="text" id="user-input" 
-                   class="flex-1 bg-transparent border-0 text-sm focus:outline-none text-gray-700 placeholder-gray-400" 
-                   placeholder="Type a message..." 
-                   autocomplete="off"
-                   onkeypress="handleEnter(event)">
-        </div>
-        <button onclick="sendMessage()" id="send-btn" class="bg-[#128C7E] text-white w-10 h-10 rounded-full flex items-center justify-center shadow-md transition transform active:scale-90 disabled:opacity-50 disabled:cursor-not-allowed">
-            <i class="fas fa-paper-plane text-sm pl-0.5"></i>
-        </button>
     </div>
 
     <script>
-        let currentSchoolID = "";
+        // --- STATE MANAGEMENT ---
+        let schools = JSON.parse(localStorage.getItem('vericampus_schools')) || [];
+        let currentSchoolID = null;
+        let chatHistory = JSON.parse(localStorage.getItem('vericampus_history')) || {};
+
+        // --- INITIALIZATION ---
+        renderSidebar();
+        if(schools.length === 0) {
+            showLoginModal();
+        } else {
+            selectSchool(schools[0]);
+        }
+
+        // --- FUNCTIONS ---
+
+        function showLoginModal() {
+            document.getElementById('login-modal').style.display = 'flex';
+            document.getElementById('new-school-id').focus();
+        }
+
+        function closeLoginModal() {
+            document.getElementById('login-modal').style.display = 'none';
+        }
+
+        function addNewSchool() {
+            const input = document.getElementById('new-school-id');
+            const id = input.value.trim().toUpperCase();
+            
+            if(!id) return alert("Enter an ID!");
+            
+            if(!schools.includes(id)) {
+                schools.push(id);
+                localStorage.setItem('vericampus_schools', JSON.stringify(schools));
+                renderSidebar();
+            }
+            
+            selectSchool(id);
+            closeLoginModal();
+            input.value = "";
+        }
+
+        function renderSidebar() {
+            const list = document.getElementById('school-list');
+            list.innerHTML = "";
+            
+            schools.forEach(id => {
+                const isActive = id === currentSchoolID ? 'active-chat' : 'hover:bg-gray-50';
+                const btn = document.createElement('div');
+                btn.className = `p-3 rounded-lg cursor-pointer transition mb-1 flex items-center gap-3 ${isActive}`;
+                btn.onclick = () => selectSchool(id);
+                btn.innerHTML = `
+                    <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold text-xs shadow-sm">
+                        ${id.substring(0, 2)}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="font-bold text-sm text-gray-800 truncate">${id}</p>
+                        <p class="text-xs text-gray-500 truncate">Tap to chat...</p>
+                    </div>
+                `;
+                list.appendChild(btn);
+            });
+        }
+
+        function selectSchool(id) {
+            currentSchoolID = id;
+            document.getElementById('current-school-name').innerText = id;
+            document.getElementById('user-input').disabled = false;
+            document.getElementById('send-btn').disabled = false;
+            
+            // Close sidebar on mobile
+            if(window.innerWidth < 768) {
+                document.getElementById('sidebar').classList.add('hidden');
+            }
+            
+            renderSidebar(); // Update active state
+            loadChatHistory();
+        }
+
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('hidden');
+        }
 
         function handleEnter(e) {
             if (e.key === 'Enter') sendMessage();
         }
 
-        function login() {
-            const input = document.getElementById('school-id-input');
-            const val = input.value.trim();
+        // --- CHAT LOGIC ---
+
+        function loadChatHistory() {
+            const chatBox = document.getElementById('chat-box');
+            const history = chatHistory[currentSchoolID] || [];
             
-            if(!val) {
-                // Shake animation for error
-                input.parentElement.classList.add('animate-bounce');
-                setTimeout(() => input.parentElement.classList.remove('animate-bounce'), 500);
-                return;
+            if(history.length === 0) {
+                chatBox.innerHTML = `
+                    <div class="flex justify-center my-4">
+                        <span class="bg-blue-100 text-blue-800 text-xs px-3 py-1 rounded-full">
+                            Connected to ${currentSchoolID} Database
+                        </span>
+                    </div>
+                    <div class="msg-received p-3">
+                        <p class="text-sm">👋 Hello! I am ready to answer questions about <b>${currentSchoolID}</b>.</p>
+                    </div>`;
+            } else {
+                chatBox.innerHTML = history.map(msg => `
+                    <div class="${msg.sender === 'user' ? 'msg-sent' : 'msg-received'} p-3 mb-2">
+                        <p class="text-sm leading-relaxed">${msg.text}</p>
+                        <span class="text-[10px] opacity-70 block text-right mt-1">${msg.time}</span>
+                    </div>
+                `).join('');
             }
-            
-            currentSchoolID = val.toUpperCase();
-            
-            // Hide login screen
-            document.getElementById('login-screen').style.display = 'none';
-            
-            // Update Header
-            document.getElementById('header-status').innerText = currentSchoolID;
-            
-            // Add system message to chat
-            addSystemMessage(`Connected to ${currentSchoolID}`);
-        }
-        
-        function getTime() {
-            const now = new Date();
-            return now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            chatBox.scrollTop = chatBox.scrollHeight;
         }
 
-        function addSystemMessage(text) {
-            const chatBox = document.getElementById('chat-box');
-            chatBox.innerHTML += `
-                <div class="flex justify-center my-2">
-                    <span class="bg-[#e1f3fb] text-gray-600 text-[10px] px-2 py-1 rounded shadow-sm uppercase font-bold tracking-wide">
-                        ${text}
-                    </span>
-                </div>`;
-            chatBox.scrollTop = chatBox.scrollHeight;
+        function saveMessage(sender, text) {
+            if(!chatHistory[currentSchoolID]) chatHistory[currentSchoolID] = [];
+            
+            chatHistory[currentSchoolID].push({
+                sender: sender,
+                text: text,
+                time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+            });
+            
+            localStorage.setItem('vericampus_history', JSON.stringify(chatHistory));
         }
 
         async function sendMessage() {
             const input = document.getElementById('user-input');
-            const sendBtn = document.getElementById('send-btn');
             const message = input.value.trim();
-            
             if (!message) return;
-            
-            if (!currentSchoolID) {
-                // Force login if they bypassed it
-                document.getElementById('login-screen').style.display = 'flex';
-                return;
-            }
-            
+
             const chatBox = document.getElementById('chat-box');
             
-            // 1. Add User Bubble
+            // 1. Show User Message
+            const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             chatBox.innerHTML += `
-                <div class="chat-bubble-user p-2 px-3 mb-2">
-                    <p class="text-sm text-gray-800 leading-snug">${message}</p>
-                    <div class="text-[10px] text-green-800/60 text-right mt-1 flex justify-end items-center gap-1">
-                        <span>${getTime()}</span>
-                        <i class="fas fa-check text-green-600"></i>
-                    </div>
+                <div class="msg-sent p-3 mb-2 animate-pulse">
+                    <p class="text-sm leading-relaxed">${message}</p>
+                    <span class="text-[10px] opacity-70 block text-right mt-1">${time}</span>
                 </div>`;
             
+            saveMessage('user', message);
             input.value = '';
             chatBox.scrollTop = chatBox.scrollHeight;
 
-            // 2. Add Loading Bubble
+            // 2. Loading State
             const loadingId = "loading-" + Date.now();
             chatBox.innerHTML += `
-                <div id="${loadingId}" class="chat-bubble-ai p-3 px-4 mb-2 animate-pulse">
+                <div id="${loadingId}" class="msg-received p-3 mb-2">
                     <div class="flex gap-1">
                         <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
                         <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
@@ -206,10 +261,6 @@
                     </div>
                 </div>`;
             chatBox.scrollTop = chatBox.scrollHeight;
-
-            // Disable inputs
-            input.disabled = true;
-            sendBtn.disabled = true;
 
             try {
                 const formData = new FormData();
@@ -219,27 +270,31 @@
                 const response = await fetch(`/chat`, { method: 'POST', body: formData });
                 const data = await response.json();
                 
-                // Remove loading
                 document.getElementById(loadingId).remove();
                 
-                // 3. Add AI Response Bubble
+                // 3. Show AI Response
                 const formattedAnswer = data.answer.replace(/\n/g, '<br>');
                 chatBox.innerHTML += `
-                    <div class="chat-bubble-ai p-2 px-3 mb-2">
-                        <p class="text-sm text-gray-800 leading-relaxed">${formattedAnswer}</p>
-                        <div class="text-[10px] text-gray-400 text-right mt-1">
-                            <span>${getTime()}</span>
-                        </div>
+                    <div class="msg-received p-3 mb-2">
+                        <p class="text-sm leading-relaxed">${formattedAnswer}</p>
+                        <span class="text-[10px] opacity-70 block text-right mt-1">${time}</span>
                     </div>`;
+                
+                saveMessage('ai', formattedAnswer);
                 
             } catch (err) {
                 document.getElementById(loadingId).remove();
-                addSystemMessage("⚠️ Connection Error. Server might be sleeping.");
+                alert("Connection Error.");
             } finally {
-                input.disabled = false;
-                sendBtn.disabled = false;
-                input.focus();
                 chatBox.scrollTop = chatBox.scrollHeight;
+            }
+        }
+
+        function clearChat() {
+            if(confirm("Clear history for this school?")) {
+                chatHistory[currentSchoolID] = [];
+                localStorage.setItem('vericampus_history', JSON.stringify(chatHistory));
+                loadChatHistory();
             }
         }
     </script>
