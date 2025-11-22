@@ -8,12 +8,12 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
+# New: Pinecone Import
 from langchain_pinecone import PineconeVectorStore
-from pinecone import Pinecone, ServerlessSpec
+from pinecone import Pinecone
 
 load_dotenv()
 
-# Initialize Keys
 if not os.getenv("GROQ_API_KEY"): raise ValueError("GROQ_API_KEY missing")
 if not os.getenv("HUGGINGFACEHUB_API_TOKEN"): raise ValueError("HUGGINGFACEHUB_API_TOKEN missing")
 if not os.getenv("PINECONE_API_KEY"): raise ValueError("PINECONE_API_KEY missing")
@@ -26,10 +26,9 @@ embeddings = HuggingFaceEndpointEmbeddings(
     huggingfacehub_api_token=os.getenv("HUGGINGFACEHUB_API_TOKEN")
 )
 
-# 2. DATABASE (Pinecone)
-# Initialize Pinecone connection
+# 2. DATABASE (Pinecone - Permanent Cloud Storage)
 pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
-index_name = "vericampus-db" # Must match what you created on website
+index_name = "vericampus-db" 
 
 # 3. TALKER (Groq)
 llm = ChatGroq(
@@ -51,17 +50,17 @@ def process_pdf(file_path, school_id):
     
     print(f"Uploading {len(all_splits)} chunks to Pinecone Cloud...")
     
-    # We save data into a specific "Namespace" for the school
-    # This ensures UNILAG data stays separate from FUTO data
+    # Save to Pinecone. Namespace keeps schools separate.
+    # This data persists even if your laptop/server dies.
     PineconeVectorStore.from_documents(
-        documents=all_splits,
-        embedding=embeddings,
+        documents=all_splits, 
+        embedding=embeddings, 
         index_name=index_name,
-        namespace=school_id.upper() 
+        namespace=school_id.upper()
     )
             
     print("Done! Data Saved Permanently.")
-    return f"Success! Saved to {school_id} database."
+    return f"Success! Saved to {school_id} cloud database."
 
 def add_realtime_update(update_text, author):
     real_time_updates.append(f"URGENT: {author} says: {update_text}")
@@ -70,21 +69,18 @@ def add_realtime_update(update_text, author):
 def ask_vericampus(question, school_id):
     # Connect to the specific School's Cloud Memory
     vector_store = PineconeVectorStore(
-        index_name=index_name,
+        index_name=index_name, 
         embedding=embeddings,
         namespace=school_id.upper()
     )
-    
+
     retriever = vector_store.as_retriever()
     
-    template = """You are VeriCampus. Answer the question based on the context below.
+    template = """You are VeriCampus. Answer based on context.
     
     Context: {context}
-    
     Updates: {real_time_info}
-    
     Question: {question}
-    
     Answer:"""
     
     prompt = ChatPromptTemplate.from_template(template)
