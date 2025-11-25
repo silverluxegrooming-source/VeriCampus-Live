@@ -15,46 +15,52 @@ app.add_middleware(
 )
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# --- AUTH LOGIC (Updated for Mobile) ---
+# --- AUTH LOGIC ---
 ADMIN_USER = "admin"
 ADMIN_PASS = "password12345"
 
 # --- ROUTES ---
 
-# 1. LANDING PAGE
 @app.get("/")
 async def read_landing():
     return FileResponse('static/landing.html')
 
-# 2. THE APP
 @app.get("/app")
 async def read_app():
     return FileResponse('static/index.html')
 
-# 3. LOGIN PAGE (New)
 @app.get("/login")
 async def login_page():
     return FileResponse('static/login.html')
 
-# 4. LOGIN ACTION (Handles the form post)
+# --- LOGIN ACTION (FIXED FOR MOBILE) ---
 @app.post("/login")
 async def login(response: Response, username: str = Form(...), password: str = Form(...)):
     if secrets.compare_digest(username, ADMIN_USER) and secrets.compare_digest(password, ADMIN_PASS):
-        # Set a cookie that works on mobile
+        # 1. Set Cookie (Best practice for web)
         response.set_cookie(key="admin_session", value="authenticated", httponly=True)
-        return RedirectResponse(url="/admin", status_code=303)
+        
+        # 2. Redirect with URL Parameter (The "Mobile Fix")
+        # This forces the app to recognize you are logged in, even if it drops the cookie.
+        return RedirectResponse(url="/admin?auth=success", status_code=303)
     else:
-        # If wrong, go back to login (You could add an error message logic here)
-        return RedirectResponse(url="/login", status_code=303)
+        # Failed login
+        return RedirectResponse(url="/login?error=invalid", status_code=303)
 
-# 5. ADMIN PANEL (Protected by Cookie)
+# --- ADMIN PANEL (FIXED FOR MOBILE) ---
 @app.get("/admin")
 async def read_admin(request: Request):
-    token = request.cookies.get("admin_session")
-    if token != "authenticated":
-        # If no cookie, redirect to login page
-        return RedirectResponse(url="/login")
-    return FileResponse('static/admin.html')
+    # Check 1: Is the Cookie there?
+    cookie_token = request.cookies.get("admin_session")
+    
+    # Check 2: Is the URL Parameter there? (Fallback for Android App)
+    url_token = request.query_params.get("auth")
+
+    if cookie_token == "authenticated" or url_token == "success":
+        return FileResponse('static/admin.html')
+    
+    # If neither found, kick them out
+    return RedirectResponse(url="/login")
 
 # --- API ENDPOINTS (Unchanged) ---
 @app.post("/upload-handbook")
