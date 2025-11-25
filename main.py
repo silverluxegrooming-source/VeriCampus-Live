@@ -1,51 +1,59 @@
 import secrets
-from fastapi import FastAPI, UploadFile, File, Form, Depends, HTTPException, status
+from fastapi import FastAPI, UploadFile, File, Form, Depends, HTTPException, status, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, RedirectResponse
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
 import shutil
 import os
 from rag_engine import process_document, ask_vericampus, add_realtime_update
 
 app = FastAPI(title="VeriCampus Version 2.0")
 
-# --- SECURITY ---
-security = HTTPBasic()
-def get_current_username(credentials: HTTPBasicCredentials = Depends(security)):
-    correct_username = "admin"
-    correct_password = "password12345" 
-    is_correct_username = secrets.compare_digest(credentials.username, correct_username)
-    is_correct_password = secrets.compare_digest(credentials.password, correct_password)
-    if not (is_correct_username and is_correct_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
-            headers={"WWW-Authenticate": "Basic"},
-        )
-    return credentials.username
-
+# --- CONFIG ---
 app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"]
 )
-
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# --- AUTH LOGIC (Updated for Mobile) ---
+ADMIN_USER = "admin"
+ADMIN_PASS = "password12345"
 
 # --- ROUTES ---
 
-# 1. LANDING PAGE (Marketing Website)
+# 1. LANDING PAGE
 @app.get("/")
 async def read_landing():
     return FileResponse('static/landing.html')
 
-# 2. THE APP (Student Chat Interface)
+# 2. THE APP
 @app.get("/app")
 async def read_app():
     return FileResponse('static/index.html')
 
-# 3. ADMIN PANEL
+# 3. LOGIN PAGE (New)
+@app.get("/login")
+async def login_page():
+    return FileResponse('static/login.html')
+
+# 4. LOGIN ACTION (Handles the form post)
+@app.post("/login")
+async def login(response: Response, username: str = Form(...), password: str = Form(...)):
+    if secrets.compare_digest(username, ADMIN_USER) and secrets.compare_digest(password, ADMIN_PASS):
+        # Set a cookie that works on mobile
+        response.set_cookie(key="admin_session", value="authenticated", httponly=True)
+        return RedirectResponse(url="/admin", status_code=303)
+    else:
+        # If wrong, go back to login (You could add an error message logic here)
+        return RedirectResponse(url="/login", status_code=303)
+
+# 5. ADMIN PANEL (Protected by Cookie)
 @app.get("/admin")
-async def read_admin(username: str = Depends(get_current_username)):
+async def read_admin(request: Request):
+    token = request.cookies.get("admin_session")
+    if token != "authenticated":
+        # If no cookie, redirect to login page
+        return RedirectResponse(url="/login")
     return FileResponse('static/admin.html')
 
 # --- API ENDPOINTS (Unchanged) ---
