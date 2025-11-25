@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
-    <title>VeriCampus</title>
+    <title>VeriCampus Ai</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link rel="manifest" href="/static/manifest.json">
@@ -95,10 +95,10 @@
     <div id="sidebar" class="fixed inset-y-0 left-0 w-[280px] bg-white border-r border-gray-200 flex flex-col z-50 transform -translate-x-full md:relative md:translate-x-0 sidebar-transition shadow-2xl md:shadow-none flex-none">
         <div class="p-4 border-b border-gray-100 bg-gray-50">
             <div class="flex justify-between items-center mb-4">
-                <div class="flex items-center gap-2">
-                    <img src="/static/logo.png" onerror="this.style.display='none'" class="w-8 h-8 rounded-lg object-contain">
-                    <h2 class="font-bold text-lg text-gray-800">VeriCampus</h2>
-                </div>
+               <div class="flex items-center gap-2">
+               <img src="/static/logo.png" onerror="this.style.display='none'" class="w-8 h-8 rounded-lg object-contain">
+               <h2 class="font-bold text-lg text-gray-800">VeriCampus AI</h2> 
+            </div>
                 <button onclick="closeSidebar()" class="md:hidden text-gray-500 p-2"><i class="fas fa-times"></i></button>
             </div>
             <input type="text" id="search-school" oninput="filterSchools()" placeholder="Search chats..." 
@@ -112,7 +112,7 @@
                 <i class="fas fa-plus"></i> Add School
             </button>
             
-            <a href="/admin" class="w-full bg-gray-900 text-white py-3 rounded-xl font-semibold hover:bg-gray-800 transition flex items-center justify-center gap-2 text-sm shadow-lg">
+            <a href="/admin"  target="_blank" class="w-full bg-gray-900 text-white py-3 rounded-xl font-semibold hover:bg-gray-800 transition flex items-center justify-center gap-2 text-sm shadow-lg">
                 <i class="fas fa-user-shield"></i> Admin Panel
             </a>
         </div>
