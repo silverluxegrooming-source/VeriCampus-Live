@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
     <title>VeriCampus</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
@@ -10,252 +10,244 @@
     <meta name="theme-color" content="#1e3a8a">
     
     <style>
-        /* 1. Clean White Background (No WhatsApp Doodles) */
-        body { background-color: #ffffff; overscroll-behavior-y: none; }
+        /* 1. Custom Tech Background */
+        body { 
+            background-color: #f0f9ff;
+            background-image: 
+                radial-gradient(#1e3a8a 0.5px, transparent 0.5px), 
+                radial-gradient(#1e3a8a 0.5px, #f0f9ff 0.5px);
+            background-size: 20px 20px;
+            background-position: 0 0, 10px 10px;
+            overscroll-behavior-y: none; 
+        }
         
-        /* 2. Chat Area */
-        .chat-bg { background-color: #f9fafb; } /* Very light gray for contrast */
+        /* Chat Container Background */
+        .chat-bg { 
+            background-image: url('/static/bg.jpg');
+            background-attachment: fixed;
+            background-size: cover; 
+            background-position: center;
+            background-repeat: no-repeat;
+            background-color: #e5ddd5; 
+        }
         
-        /* 3. Message Bubbles (Blue & White) */
+        /* 2. Bubbles */
         .msg-sent { 
-            background: #1e3a8a; 
-            color: white; 
+            background: #1e3a8a; color: white; 
             border-radius: 18px 18px 4px 18px; 
             max-width: 85%; 
             align-self: flex-end; 
-            box-shadow: 0 1px 2px rgba(0,0,0,0.1); 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
         }
         .msg-received { 
-            background: #ffffff; 
-            color: #1f2937; 
+            background: #ffffff; color: #1f2937; 
             border-radius: 18px 18px 18px 4px; 
             max-width: 85%; 
             align-self: flex-start; 
-            box-shadow: 0 1px 2px rgba(0,0,0,0.1); 
-            border: 1px solid #e5e7eb;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05); 
+            border: 1px solid #e5e7eb; 
         }
         
-        /* Active School in Sidebar */
+        /* 3. GEMINI LOADING ANIMATION */
+        @keyframes spin-ring {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .gemini-loader {
+            position: relative;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .gemini-ring {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border: 3px solid transparent;
+            border-top-color: #1e3a8a;
+            border-right-color: #60a5fa;
+            border-radius: 50%;
+            animation: spin-ring 1s linear infinite;
+        }
+        .gemini-logo { width: 24px; height: 24px; object-fit: contain; z-index: 10; }
+
+        /* 4. UTILS */
+        .msg-actions { opacity: 0; transition: opacity 0.2s; display: flex; gap: 6px; margin-top: 4px; }
+        .msg-wrapper:hover .msg-actions, .msg-wrapper.active .msg-actions { opacity: 1; }
+        .action-btn { padding: 4px 8px; background: #f3f4f6; border-radius: 6px; color: #6b7280; cursor: pointer; font-size: 11px; }
+        .action-btn:hover { background: #e5e7eb; color: #1e3a8a; transform: scale(1.05); }
+        .action-btn.active { background: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; }
         .active-school { background-color: #eff6ff; border-left: 4px solid #1e3a8a; }
+        .sidebar-transition { transition: transform 0.3s ease-in-out; }
     </style>
 </head>
 
-<!-- 
-    LAYOUT FIX: h-[100dvh] ensures it fits the mobile screen exactly. 
-    flex-col makes the input bar sit naturally at the bottom, pushing up when keyboard opens.
--->
-<body class="h-[100dvh] flex overflow-hidden font-sans text-gray-800 bg-white">
+<body class="h-[100dvh] flex flex-row font-sans text-gray-800 bg-white overflow-hidden">
 
-    <!-- OVERLAY (Mobile Sidebar) -->
-    <div id="sidebar-overlay" onclick="closeSidebar()" class="fixed inset-0 bg-black/50 z-30 hidden md:hidden backdrop-blur-sm transition-opacity"></div>
+    <button id="install-btn" onclick="installApp()" class="hidden fixed top-4 right-4 z-50 bg-black text-white px-4 py-2 rounded-full shadow-xl font-bold text-xs flex items-center gap-2 border border-gray-700">
+        <i class="fas fa-download"></i> Install App
+    </button>
 
-    <!-- SIDEBAR (School List) -->
-    <div id="sidebar" class="fixed inset-y-0 left-0 w-[280px] bg-white border-r border-gray-200 flex flex-col z-40 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out shadow-2xl md:shadow-none md:relative">
-        
-        <!-- Header -->
-        <div class="p-4 border-b border-gray-100 bg-white">
+    <div id="sidebar-overlay" onclick="closeSidebar()" class="fixed inset-0 bg-black/50 z-40 hidden md:hidden backdrop-blur-sm transition-opacity"></div>
+
+    <div id="sidebar" class="fixed inset-y-0 left-0 w-[280px] bg-white border-r border-gray-200 flex flex-col z-50 transform -translate-x-full md:relative md:translate-x-0 sidebar-transition shadow-2xl md:shadow-none flex-none">
+        <div class="p-4 border-b border-gray-100 bg-gray-50">
             <div class="flex justify-between items-center mb-4">
                 <div class="flex items-center gap-2">
-                    <div class="w-8 h-8 bg-blue-900 rounded-lg flex items-center justify-center text-white font-bold">V</div>
+                    <img src="/static/logo.png" onerror="this.style.display='none'" class="w-8 h-8 rounded-lg object-contain">
                     <h2 class="font-bold text-lg text-gray-800">VeriCampus</h2>
                 </div>
                 <button onclick="closeSidebar()" class="md:hidden text-gray-500 p-2"><i class="fas fa-times"></i></button>
             </div>
             <input type="text" id="search-school" oninput="filterSchools()" placeholder="Search chats..." 
-                   class="w-full bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-lg pl-4 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-100 transition">
+                   class="w-full bg-white border border-gray-200 text-gray-700 text-sm rounded-lg pl-4 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-100 transition">
         </div>
-
-        <!-- List -->
+        
         <div id="school-list" class="flex-1 overflow-y-auto p-2 space-y-1"></div>
-
-        <!-- Add Button -->
-        <div class="p-4 border-t border-gray-100">
+        
+        <div class="p-4 border-t border-gray-100 space-y-2">
             <button onclick="showLoginModal()" class="w-full bg-blue-50 text-blue-700 py-3 rounded-xl font-semibold hover:bg-blue-100 transition flex items-center justify-center gap-2 border border-blue-200">
-                <i class="fas fa-plus"></i> New School ID
+                <i class="fas fa-plus"></i> Add School
             </button>
+            
+            <a href="/admin" class="w-full bg-gray-900 text-white py-3 rounded-xl font-semibold hover:bg-gray-800 transition flex items-center justify-center gap-2 text-sm shadow-lg">
+                <i class="fas fa-user-shield"></i> Admin Panel
+            </a>
         </div>
     </div>
 
-    <!-- MAIN CHAT AREA (Flexbox Column) -->
-    <div class="flex-1 flex flex-col h-full relative w-full min-w-0">
-        
-        <!-- 1. HEADER (Fixed Height) -->
-        <div class="bg-white px-4 py-3 shadow-sm flex-none flex items-center justify-between border-b border-gray-100 z-10">
+    <div class="flex-1 flex flex-col h-full relative min-w-0">
+        <div class="bg-white/95 backdrop-blur-sm px-4 py-3 shadow-sm flex-none flex items-center justify-between border-b border-gray-100 z-20">
             <div class="flex items-center gap-3 overflow-hidden">
                 <button onclick="openSidebar()" class="md:hidden text-gray-600 p-1 -ml-2"><i class="fas fa-bars text-xl"></i></button>
-                <div class="flex flex-col overflow-hidden">
-                    <h1 class="font-bold text-gray-800 leading-tight truncate" id="header-display-name">Select a School</h1>
-                    <p class="text-[10px] text-gray-400 truncate" id="header-real-id"></p>
+                <div class="flex items-center gap-2">
+                    <img src="/static/logo.png" onerror="this.style.display='none'" class="w-8 h-8 object-contain">
+                    <div class="flex flex-col overflow-hidden">
+                        <h1 class="font-bold text-gray-800 leading-tight truncate text-base" id="header-display-name">Select School</h1>
+                        <p class="text-[10px] text-gray-400 truncate" id="header-real-id">Not Connected</p>
+                    </div>
                 </div>
             </div>
-            <div class="flex gap-3 text-gray-400">
-                 <button onclick="clearChat()" title="Clear History"><i class="fas fa-trash-alt hover:text-red-500 transition"></i></button>
+            <div class="flex gap-4 text-gray-400">
+                 <button onclick="refreshApp()" title="Refresh App" class="hover:text-blue-600 transition"><i class="fas fa-sync-alt"></i></button>
+                 <button onclick="clearChat()" title="Clear History" class="hover:text-red-500 transition"><i class="fas fa-trash-alt"></i></button>
             </div>
         </div>
 
-        <!-- 2. CHAT BOX (Flex Grow - Takes all available space) -->
-        <div id="chat-box" class="flex-1 overflow-y-auto p-4 space-y-3 flex flex-col chat-bg">
-            <div class="flex flex-col items-center justify-center mt-20 opacity-40 gap-4">
-                <i class="fas fa-graduation-cap text-6xl text-gray-300"></i>
-                <p class="text-sm text-gray-400">Select a school from the menu</p>
+        <div id="chat-box" class="flex-1 overflow-y-auto p-4 space-y-4 flex flex-col chat-bg pb-4">
+            <div class="flex flex-col items-center justify-center mt-20 opacity-60 gap-4">
+                <img src="/static/logo.png" onerror="this.style.display='none'" class="w-24 h-24 object-contain opacity-50 grayscale">
+                <p class="text-sm text-gray-500 font-medium">Select a school from the menu</p>
             </div>
         </div>
 
-        <!-- 3. INPUT BAR (Fixed Bottom of Flex Container) -->
-        <!-- This stays visible when keyboard opens because the browser shrinks the 'flex-1' area above it -->
-        <div class="bg-white p-3 border-t border-gray-100 flex-none z-20">
+        <div class="bg-white p-3 border-t border-gray-200 flex-none z-30 w-full">
             <div class="flex gap-2 max-w-4xl mx-auto items-end">
                 <div class="flex-1 bg-gray-100 rounded-2xl flex items-center px-4 border border-transparent focus-within:border-blue-300 focus-within:bg-white transition">
                     <input type="text" id="user-input" 
-                           class="flex-1 bg-transparent border-0 text-sm focus:outline-none text-gray-800 placeholder-gray-500 py-3" 
+                           class="flex-1 bg-transparent border-0 text-sm focus:outline-none text-gray-800 placeholder-gray-500 py-3 max-h-32" 
                            placeholder="Ask a question..." 
-                           disabled
-                           autocomplete="off"
-                           onkeypress="handleEnter(event)">
+                           disabled autocomplete="off" onkeypress="handleEnter(event)">
                 </div>
-                <button onclick="sendMessage()" id="send-btn" class="bg-blue-900 text-white w-11 h-11 rounded-full flex-none flex items-center justify-center shadow-lg hover:bg-blue-800 transition transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                <button onclick="sendMessage()" id="send-btn" class="bg-blue-900 text-white w-11 h-11 rounded-full flex-none flex items-center justify-center shadow-lg hover:bg-blue-800 transition transform active:scale-95 disabled:opacity-50" disabled>
                     <i class="fas fa-paper-plane text-sm pl-0.5"></i>
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- LOGIN MODAL -->
     <div id="login-modal" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4 backdrop-blur-sm">
-        <div class="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden">
-            <div class="bg-blue-900 p-6 text-center">
-                <h2 class="text-xl font-bold text-white">Connect to Database</h2>
-            </div>
-            <div class="p-6 space-y-4">
-                <input type="text" id="new-school-id" placeholder="Enter ID (e.g. FUTO-2845)" 
-                       class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-center font-bold text-lg tracking-widest uppercase focus:ring-2 focus:ring-blue-900 outline-none">
-                <div class="flex gap-2">
-                    <button onclick="closeLoginModal()" class="flex-1 py-3 rounded-xl font-bold text-gray-500 hover:bg-gray-100">Cancel</button>
-                    <button onclick="addNewSchool()" class="flex-1 bg-blue-900 text-white py-3 rounded-xl font-bold hover:bg-blue-800">Connect</button>
-                </div>
+        <div class="bg-white w-full max-w-sm rounded-2xl shadow-2xl p-6">
+            <div class="flex justify-center mb-4"><img src="/static/logo.png" onerror="this.style.display='none'" class="w-16 h-16 object-contain"></div>
+            <h2 class="text-xl font-bold text-gray-800 text-center mb-4">School Login</h2>
+            <input type="text" id="new-school-id" placeholder="Enter ID (e.g. FUTO-2845)" class="w-full px-4 py-3 bg-gray-50 border rounded-xl text-center font-bold text-lg uppercase mb-4 focus:ring-2 focus:ring-blue-900 outline-none">
+            <div class="flex gap-2">
+                <button onclick="closeLoginModal()" class="flex-1 py-3 rounded-xl text-gray-500 hover:bg-gray-100">Cancel</button>
+                <button onclick="addNewSchool()" class="flex-1 bg-blue-900 text-white font-bold py-3 rounded-xl">Connect</button>
             </div>
         </div>
     </div>
 
-    <!-- FULL OPTIONS MENU (Pin, Share, Rename, Delete) -->
     <div id="options-menu" class="fixed inset-0 z-50 hidden" onclick="hideOptions()">
-        <!-- Background Dim -->
-        <div class="absolute inset-0 bg-black/20 backdrop-blur-[1px]"></div>
-        
-        <!-- Menu Content -->
-        <div class="absolute bottom-0 left-0 right-0 md:bottom-auto md:left-auto md:right-auto md:w-56 bg-white rounded-t-2xl md:rounded-xl shadow-2xl border border-gray-100 overflow-hidden animate-slide-up" id="options-content">
-            <!-- Drag Handle for Mobile -->
-            <div class="w-12 h-1 bg-gray-300 rounded-full mx-auto my-3 md:hidden"></div>
-            
-            <div class="p-2 space-y-1">
-                <button onclick="menuAction('pin')" class="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center gap-3 text-gray-700 rounded-lg transition">
-                    <i class="fas fa-thumbtack w-4 text-blue-500"></i> <span id="pin-text">Pin Chat</span>
-                </button>
-                
-                <button onclick="menuAction('share')" class="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center gap-3 text-gray-700 rounded-lg transition">
-                    <i class="fas fa-share-alt w-4 text-gray-500"></i> Share Access
-                </button>
-
-                <button onclick="menuAction('rename')" class="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center gap-3 text-gray-700 rounded-lg transition">
-                    <i class="fas fa-pen w-4 text-gray-500"></i> Rename
-                </button>
-                
-                <div class="h-px bg-gray-100 my-1"></div>
-                
-                <button onclick="menuAction('delete')" class="w-full text-left px-4 py-3 hover:bg-red-50 flex items-center gap-3 text-red-600 rounded-lg transition">
-                    <i class="fas fa-trash w-4"></i> Delete
-                </button>
+        <div class="absolute bottom-0 left-0 right-0 md:bottom-auto md:left-auto md:right-auto md:w-48 bg-white rounded-t-2xl md:rounded-xl shadow-2xl border border-gray-100 overflow-hidden" id="options-content">
+            <div class="p-1">
+                <button onclick="menuAction('rename')" class="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center gap-3 text-gray-700 rounded-lg"><i class="fas fa-pen w-4"></i> Rename</button>
+                <button onclick="menuAction('pin')" class="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center gap-3 text-gray-700 rounded-lg"><i class="fas fa-thumbtack w-4"></i> Pin</button>
+                <button onclick="menuAction('share')" class="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center gap-3 text-gray-700 rounded-lg"><i class="fas fa-share-alt w-4"></i> Share</button>
+                <button onclick="menuAction('delete')" class="w-full text-left px-4 py-3 hover:bg-red-50 flex items-center gap-3 text-red-600 rounded-lg"><i class="fas fa-trash w-4"></i> Delete</button>
             </div>
         </div>
     </div>
 
     <script>
-        // STATE
+        // --- LOGIC ---
         let schools = JSON.parse(localStorage.getItem('vericampus_schools_v2')) || [];
-        // If coming from v1, migrate
-        const oldSchools = JSON.parse(localStorage.getItem('vericampus_schools'));
-        if (oldSchools && Array.isArray(oldSchools) && typeof oldSchools[0] === 'string') {
-            schools = oldSchools.map(id => ({ id: id, name: id }));
-            localStorage.setItem('vericampus_schools_v2', JSON.stringify(schools));
-        }
-
         let pinned = JSON.parse(localStorage.getItem('vericampus_pinned')) || [];
         let chatHistory = JSON.parse(localStorage.getItem('vericampus_history_v2')) || {};
-        
         let currentSchoolObj = null;
         let menuTargetIndex = null;
+        let synth = window.speechSynthesis;
+        let speakingMsgId = null; 
 
-        // INIT
+        // INSTALL BTN
+        let deferredPrompt;
+        const installBtn = document.getElementById('install-btn');
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            installBtn.classList.remove('hidden');
+        });
+        async function installApp() {
+            if (!deferredPrompt) return;
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            if (outcome === 'accepted') installBtn.classList.add('hidden');
+            deferredPrompt = null;
+        }
+
         renderSidebar();
-        if(schools.length > 0) selectSchool(schools[0]);
-        else showLoginModal();
+        if(schools.length > 0) selectSchool(schools[0]); else showLoginModal();
 
-        // UI FUNCTIONS
-        function openSidebar() {
-            document.getElementById('sidebar').classList.remove('-translate-x-full');
-            document.getElementById('sidebar-overlay').classList.remove('hidden');
-        }
-        function closeSidebar() {
-            document.getElementById('sidebar').classList.add('-translate-x-full');
-            document.getElementById('sidebar-overlay').classList.add('hidden');
-        }
-        function showLoginModal() {
-            document.getElementById('login-modal').style.display = 'flex';
-            document.getElementById('new-school-id').focus();
-        }
-        function closeLoginModal() {
-            document.getElementById('login-modal').style.display = 'none';
-        }
+        // UI HELPERS
+        function openSidebar() { document.getElementById('sidebar').classList.remove('-translate-x-full'); document.getElementById('sidebar-overlay').classList.remove('hidden'); }
+        function closeSidebar() { document.getElementById('sidebar').classList.add('-translate-x-full'); document.getElementById('sidebar-overlay').classList.add('hidden'); }
+        function showLoginModal() { document.getElementById('login-modal').style.display = 'flex'; document.getElementById('new-school-id').focus(); }
+        function closeLoginModal() { document.getElementById('login-modal').style.display = 'none'; }
+        function refreshApp() { window.location.reload(); }
 
-        // SCHOOL LOGIC
         function addNewSchool() {
             const input = document.getElementById('new-school-id');
             const rawId = input.value.trim().toUpperCase();
             if(!rawId) return;
-            
             const exists = schools.find(s => s.id === rawId);
             if (!exists) {
                 const newSchool = { id: rawId, name: rawId };
                 schools.unshift(newSchool);
                 saveData();
                 selectSchool(newSchool);
-            } else {
-                selectSchool(exists);
-            }
+            } else { selectSchool(exists); }
             closeLoginModal();
             renderSidebar();
             input.value = "";
         }
 
-        function filterSchools() {
-            const query = document.getElementById('search-school').value.toLowerCase();
-            renderSidebar(query);
-        }
-
         function renderSidebar(filter = "") {
             const list = document.getElementById('school-list');
             list.innerHTML = "";
-            
-            // Sort: Pinned items first
             const sortedSchools = [...schools].sort((a, b) => {
                 const aPin = pinned.includes(a.id);
                 const bPin = pinned.includes(b.id);
                 return (aPin === bPin) ? 0 : aPin ? -1 : 1;
             });
-
-            sortedSchools.forEach((school) => {
-                if(!school.name.toLowerCase().includes(filter) && !school.id.toLowerCase().includes(filter)) return;
-
+            sortedSchools.forEach((school, index) => {
+                if(!school.name.toLowerCase().includes(filter)) return;
+                const isActive = currentSchoolObj && school.id === currentSchoolObj.id ? 'active-school bg-blue-50' : 'hover:bg-gray-50';
                 const isPinned = pinned.includes(school.id);
-                const isActive = currentSchoolObj && school.id === currentSchoolObj.id ? 'active-school bg-blue-50' : 'hover:bg-gray-50 border-l-4 border-transparent';
-                
-                // Find original index for menu logic
-                const originalIndex = schools.indexOf(school);
-
                 const item = document.createElement('div');
                 item.className = `p-3 cursor-pointer transition flex items-center gap-3 border-b border-gray-100 ${isActive}`;
                 item.onclick = () => selectSchool(school);
-                
                 item.innerHTML = `
                     <div class="w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold shadow-sm bg-blue-100 text-blue-800 flex-none relative">
                         ${school.name.substring(0, 2).toUpperCase()}
@@ -265,10 +257,7 @@
                         <p class="font-bold text-sm text-gray-800 truncate">${school.name}</p>
                         <p class="text-[10px] text-gray-500 truncate uppercase tracking-wide">ID: ${school.id}</p>
                     </div>
-                    <button onclick="showOptions(event, ${originalIndex})" class="w-8 h-8 flex-none flex items-center justify-center rounded-full hover:bg-gray-200 text-gray-400">
-                        <i class="fas fa-ellipsis-v text-xs"></i>
-                    </button>
-                `;
+                    <button onclick="showOptions(event, ${index})" class="w-8 h-8 flex-none flex items-center justify-center rounded-full hover:bg-gray-200 text-gray-400"><i class="fas fa-ellipsis-v text-xs"></i></button>`;
                 list.appendChild(item);
             });
         }
@@ -277,182 +266,32 @@
             currentSchoolObj = school;
             document.getElementById('header-display-name').innerText = school.name;
             document.getElementById('header-real-id').innerText = "Connected: " + school.id;
-            
             document.getElementById('user-input').disabled = false;
             document.getElementById('send-btn').disabled = false;
-            
             if(window.innerWidth < 768) closeSidebar();
             renderSidebar();
             loadChatHistory();
         }
 
-        // MENU LOGIC
-        function showOptions(e, index) {
-            e.stopPropagation();
-            menuTargetIndex = index;
-            const targetSchool = schools[index];
-            
-            // Update Pin Text based on status
-            const isPinned = pinned.includes(targetSchool.id);
-            document.getElementById('pin-text').innerText = isPinned ? "Unpin Chat" : "Pin Chat";
-
-            const menu = document.getElementById('options-menu');
-            const content = document.getElementById('options-content');
-            
-            menu.classList.remove('hidden');
-
-            // Desktop Position Logic
-            if(window.innerWidth >= 768) {
-                const rect = e.target.getBoundingClientRect();
-                content.style.top = `${rect.top}px`;
-                content.style.left = `${rect.left - 180}px`;
-                content.style.bottom = 'auto';
-                content.style.right = 'auto';
-            }
-        }
-
+        // ... [Remaining Functions for Chat, Options, etc. are same as before] ...
+        function showOptions(e, index) { e.stopPropagation(); menuTargetIndex = index; document.getElementById('options-menu').classList.remove('hidden'); const content = document.getElementById('options-content'); if(window.innerWidth >= 768) { const rect = e.target.getBoundingClientRect(); content.style.top = `${rect.top + 20}px`; content.style.left = `${rect.left - 150}px`; } }
         function hideOptions() { document.getElementById('options-menu').classList.add('hidden'); }
-
-        function menuAction(action) {
-            const target = schools[menuTargetIndex];
-            
-            if (action === 'rename') {
-                const newName = prompt("Rename this chat:", target.name);
-                if(newName) target.name = newName.trim();
-            } 
-            else if (action === 'pin') {
-                if(pinned.includes(target.id)) {
-                    pinned = pinned.filter(id => id !== target.id); // Unpin
-                } else {
-                    pinned.push(target.id); // Pin
-                }
-            }
-            else if (action === 'share') {
-                navigator.clipboard.writeText(target.id).then(() => {
-                    alert(`Copied Access Code: ${target.id}`);
-                });
-            }
-            else if (action === 'delete') {
-                if(confirm(`Delete chat for ${target.name}?`)) {
-                    schools.splice(menuTargetIndex, 1);
-                    pinned = pinned.filter(id => id !== target.id);
-                    delete chatHistory[target.id];
-                    if(currentSchoolObj && currentSchoolObj.id === target.id) {
-                        currentSchoolObj = null;
-                        document.getElementById('chat-box').innerHTML = "";
-                        document.getElementById('header-display-name').innerText = "VeriCampus";
-                    }
-                }
-            }
-            saveData();
-            renderSidebar();
-        }
-
-        function saveData() {
-            localStorage.setItem('vericampus_schools_v2', JSON.stringify(schools));
-            localStorage.setItem('vericampus_pinned', JSON.stringify(pinned));
-            localStorage.setItem('vericampus_history_v2', JSON.stringify(chatHistory));
-        }
-
-        // CHAT ENGINE
-        function loadChatHistory() {
-            const chatBox = document.getElementById('chat-box');
-            const history = chatHistory[currentSchoolObj.id] || [];
-            
-            if(history.length === 0) {
-                chatBox.innerHTML = `
-                    <div class="flex justify-center my-6">
-                        <span class="bg-white/80 backdrop-blur border border-gray-200 text-gray-500 text-[10px] px-3 py-1 rounded-full shadow-sm">
-                            Secure Connection to <b>${currentSchoolObj.id}</b>
-                        </span>
-                    </div>
-                    <div class="msg-received p-3 px-4 max-w-[85%]">
-                        <p class="text-sm">👋 Hello! I am ready to answer questions about <b>${currentSchoolObj.name}</b>.</p>
-                    </div>`;
-            } else {
-                chatBox.innerHTML = history.map(msg => `
-                    <div class="${msg.sender === 'user' ? 'msg-sent' : 'msg-received'} p-3 px-4 mb-2">
-                        <p class="text-sm leading-relaxed">${msg.text}</p>
-                        <span class="text-[10px] opacity-50 block text-right mt-1">${msg.time}</span>
-                    </div>
-                `).join('');
-            }
-            chatBox.scrollTop = chatBox.scrollHeight;
-        }
-
-        function saveMessage(sender, text) {
-            if(!chatHistory[currentSchoolObj.id]) chatHistory[currentSchoolObj.id] = [];
-            chatHistory[currentSchoolObj.id].push({
-                sender: sender,
-                text: text,
-                time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})
-            });
-            saveData();
-        }
-
+        function menuAction(action) { const target = schools[menuTargetIndex]; if(action === 'rename') { const newName = prompt("Rename:", target.name); if(newName) target.name = newName.trim(); } else if (action === 'pin') { pinned.includes(target.id) ? pinned = pinned.filter(id=>id!==target.id) : pinned.push(target.id); } else if (action === 'share') { navigator.clipboard.writeText(target.id).then(()=>alert("ID Copied!")); } else if (action === 'delete') { if(confirm(`Delete ${target.name}?`)) { schools.splice(menuTargetIndex, 1); delete chatHistory[target.id]; if(currentSchoolObj?.id === target.id) { currentSchoolObj = null; location.reload(); } } } saveData(); renderSidebar(); }
+        function saveData() { localStorage.setItem('vericampus_schools_v2', JSON.stringify(schools)); localStorage.setItem('vericampus_pinned', JSON.stringify(pinned)); localStorage.setItem('vericampus_history_v2', JSON.stringify(chatHistory)); }
+        function loadChatHistory() { const chatBox = document.getElementById('chat-box'); const history = chatHistory[currentSchoolObj.id] || []; if(history.length === 0) { chatBox.innerHTML = `<div class="flex flex-col items-center justify-center mt-10 gap-4 animate-fade-in"><img src="/static/logo.png" onerror="this.style.display='none'" class="w-16 h-16 object-contain"><div class="bg-white p-3 rounded-xl shadow-sm border border-gray-100 max-w-xs text-center"><p class="text-sm text-gray-800">👋 Hi! I'm connected to the <b>${currentSchoolObj.name}</b> database. Ask me anything!</p></div></div>`; } else { chatBox.innerHTML = history.map((msg, idx) => msg.sender === 'user' ? renderUserMsg(msg.text, msg.time, idx) : renderAIMsg(msg.text, msg.time, idx)).join(''); } setTimeout(() => chatBox.scrollTop = chatBox.scrollHeight, 0); }
+        function renderUserMsg(text, time, idx) { return `<div id="msg-wrapper-${idx}" class="msg-wrapper w-full flex flex-col items-end group" onclick="this.classList.toggle('active')"><div class="msg-sent p-3 px-4"><p class="text-sm leading-relaxed">${text}</p><span class="text-[10px] text-blue-200 block text-right mt-1">${time}</span></div><div class="msg-actions mr-1"><button onclick="editMessage('${text}', ${idx})" class="action-btn" title="Edit"><i class="fas fa-pen"></i></button><button onclick="copyText('${text}')" class="action-btn" title="Copy"><i class="fas fa-copy"></i></button></div></div>`; }
+        function renderAIMsg(text, time, idx) { const safeText = text.replace(/'/g, "\\'").replace(/"/g, '&quot;'); const btnId = `speak-btn-${idx}`; const isSpeakingThis = speakingMsgId === btnId; const speakIcon = isSpeakingThis ? '<i class="fas fa-stop text-red-500"></i>' : '<i class="fas fa-volume-up"></i>'; return `<div id="msg-wrapper-${idx}" class="msg-wrapper w-full flex flex-col items-start group" onclick="this.classList.toggle('active')"><div class="msg-received p-3 px-4"><p class="text-sm leading-relaxed">${text}</p><span class="text-[10px] text-gray-400 block text-right mt-1">${time}</span></div><div class="msg-actions ml-1"><button id="${btnId}" onclick="toggleSpeech('${safeText}', '${btnId}')" class="action-btn" title="Read Aloud">${speakIcon}</button><button onclick="copyText('${safeText}')" class="action-btn" title="Copy"><i class="fas fa-copy"></i></button><button onclick="regenerate(${idx})" class="action-btn" title="Regenerate"><i class="fas fa-redo"></i></button><button onclick="feedback(this)" class="action-btn" title="Good"><i class="fas fa-thumbs-up"></i></button><button onclick="feedback(this)" class="action-btn" title="Bad"><i class="fas fa-thumbs-down"></i></button><button onclick="shareText('${safeText}')" class="action-btn" title="Share"><i class="fas fa-share-alt"></i></button></div></div>`; }
+        function copyText(text) { navigator.clipboard.writeText(text).then(() => alert("Copied!")); }
+        function toggleSpeech(text, btnId) { const btn = document.getElementById(btnId); if (speakingMsgId === btnId && synth.speaking) { synth.cancel(); speakingMsgId = null; if(btn) { btn.innerHTML = '<i class="fas fa-volume-up"></i>'; btn.classList.remove('active'); } return; } synth.cancel(); if (speakingMsgId) { const prevBtn = document.getElementById(speakingMsgId); if(prevBtn) { prevBtn.innerHTML = '<i class="fas fa-volume-up"></i>'; prevBtn.classList.remove('active'); } } const clean = text.replace(/<br>/g, ' '); const utterance = new SpeechSynthesisUtterance(clean); utterance.onend = () => { if(btn) { btn.innerHTML = '<i class="fas fa-volume-up"></i>'; btn.classList.remove('active'); } speakingMsgId = null; }; if(btn) { btn.innerHTML = '<i class="fas fa-stop text-red-500"></i>'; btn.classList.add('active'); } speakingMsgId = btnId; synth.speak(utterance); }
+        function feedback(btn) { btn.classList.toggle('text-green-500'); btn.classList.toggle('active'); }
+        function editMessage(oldText, index) { const input = document.getElementById('user-input'); input.value = oldText; input.focus(); chatHistory[currentSchoolObj.id].splice(index, 2); saveData(); loadChatHistory(); }
+        function regenerate(aiIndex) { const userIndex = aiIndex - 1; if(userIndex >= 0) { const userText = chatHistory[currentSchoolObj.id][userIndex].text; chatHistory[currentSchoolObj.id].splice(aiIndex, 1); saveData(); loadChatHistory(); sendMessage(userText, true); } }
+        function shareText(text) { if (navigator.share) { navigator.share({ title: 'VeriCampus Answer', text: text.replace(/<br>/g, '\n') }); } else { copyText(text); } }
         function handleEnter(e) { if(e.key === 'Enter') sendMessage(); }
-
-        async function sendMessage() {
-            const input = document.getElementById('user-input');
-            const message = input.value.trim();
-            if (!message) return;
-
-            const chatBox = document.getElementById('chat-box');
-            const time = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-
-            chatBox.innerHTML += `
-                <div class="msg-sent p-3 px-4 mb-2">
-                    <p class="text-sm leading-relaxed">${message}</p>
-                    <span class="text-[10px] text-blue-100 block text-right mt-1">${time}</span>
-                </div>`;
-            
-            saveMessage('user', message);
-            input.value = '';
-            chatBox.scrollTop = chatBox.scrollHeight;
-            
-            // Auto-scroll to bottom
-            setTimeout(() => chatBox.scrollTop = chatBox.scrollHeight, 100);
-
-            const loadingId = "loading-" + Date.now();
-            chatBox.innerHTML += `<div id="${loadingId}" class="msg-received p-3 px-4 mb-2 w-16"><p class="text-xs italic text-gray-500">typing...</p></div>`;
-            chatBox.scrollTop = chatBox.scrollHeight;
-
-            try {
-                const formData = new FormData();
-                formData.append('question', message);
-                formData.append('school_id', currentSchoolObj.id);
-                
-                const response = await fetch(`/chat`, { method: 'POST', body: formData });
-                const data = await response.json();
-                
-                document.getElementById(loadingId).remove();
-                const formatted = data.answer.replace(/\n/g, '<br>');
-                
-                chatBox.innerHTML += `
-                    <div class="msg-received p-3 px-4 mb-2">
-                        <p class="text-sm leading-relaxed text-gray-800">${formatted}</p>
-                        <span class="text-[10px] text-gray-400 block text-right mt-1">${time}</span>
-                    </div>`;
-                saveMessage('ai', formatted);
-            } catch (err) {
-                document.getElementById(loadingId).remove();
-                alert("Network Error");
-            } finally {
-                chatBox.scrollTop = chatBox.scrollHeight;
-            }
-        }
-        
-        function clearChat() {
-             if(confirm("Clear chat history?")) {
-                 delete chatHistory[currentSchoolObj.id];
-                 saveData();
-                 loadChatHistory();
-             }
-        }
+        async function sendMessage(overrideText = null, skipUserAdd = false) { const input = document.getElementById('user-input'); const message = overrideText || input.value.trim(); if (!message) return; const chatBox = document.getElementById('chat-box'); const time = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); if (!skipUserAdd) { saveMessage('user', message); loadChatHistory(); } input.value = ''; setTimeout(() => chatBox.scrollTop = chatBox.scrollHeight, 50); const loadingId = "loading-" + Date.now(); chatBox.innerHTML += `<div id="${loadingId}" class="flex items-center gap-3 p-4 bg-white rounded-xl border border-gray-100 shadow-sm w-fit"><div class="gemini-loader"><div class="gemini-ring"></div><img src="/static/logo.png" onerror="this.style.display='none'" class="gemini-logo"></div><span class="text-sm text-blue-600 font-semibold animate-pulse">Just a sec...</span></div>`; chatBox.scrollTop = chatBox.scrollHeight; try { const formData = new FormData(); formData.append('question', message); formData.append('school_id', currentSchoolObj.id); const response = await fetch(`/chat`, { method: 'POST', body: formData }); const data = await response.json(); document.getElementById(loadingId).remove(); const formatted = data.answer.replace(/\n/g, '<br>'); saveMessage('ai', formatted); loadChatHistory(); } catch (err) { document.getElementById(loadingId).remove(); alert("Network Error"); } }
+        function saveMessage(sender, text) { if(!chatHistory[currentSchoolObj.id]) chatHistory[currentSchoolObj.id] = []; chatHistory[currentSchoolObj.id].push({ sender: sender, text: text, time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) }); saveData(); }
+        function clearChat() { if(confirm("Clear chat history?")) { delete chatHistory[currentSchoolObj.id]; saveData(); loadChatHistory(); } }
+        function filterSchools() { const query = document.getElementById('search-school').value.toLowerCase(); renderSidebar(query); }
     </script>
-    <style>
-        @keyframes slide-up { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        .animate-slide-up { animation: slide-up 0.2s ease-out forwards; }
-    </style>
 </body>
 </html>
