@@ -262,7 +262,7 @@
             });
         }
 
-        function selectSchool(school) {
+       async function selectSchool(school) {
             currentSchoolObj = school;
             document.getElementById('header-display-name').innerText = school.name;
             document.getElementById('header-real-id').innerText = "Connected: " + school.id;
@@ -271,6 +271,31 @@
             if(window.innerWidth < 768) closeSidebar();
             renderSidebar();
             loadChatHistory();
+
+            // --- NEW: NOTIFICATION LOGIC ---
+            // This subscribes the phone to updates for THIS specific school ID
+            if (window.Capacitor) {
+                try {
+                    const PushNotifications = Capacitor.Plugins.PushNotifications;
+                    const FCM = Capacitor.Plugins.FCM;
+
+                    // 1. Ask for permission
+                    let permStatus = await PushNotifications.checkPermissions();
+                    if (permStatus.receive === 'prompt') {
+                        permStatus = await PushNotifications.requestPermissions();
+                    }
+
+                    if (permStatus.receive === 'granted') {
+                        await PushNotifications.register();
+                        
+                        // 2. Subscribe to the School's Topic (e.g. "FUTO-123")
+                        await FCM.subscribeTo({ topic: school.id.toUpperCase() });
+                        // alert("Subscribed to updates for " + school.id); // Uncomment for testing
+                    }
+                } catch (e) {
+                    console.log("Notification Setup Error: " + e);
+                }
+            }
         }
 
         // ... [Remaining Functions for Chat, Options, etc. are same as before] ...

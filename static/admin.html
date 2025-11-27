@@ -153,12 +153,24 @@
         }
 
         async function sendUpdate() {
+            // Get the School ID from the input field in Section 1
+            const schoolId = document.getElementById('school-id').value.trim();
+            
+            if (!schoolId) {
+                alert("⚠️ Please enter the School Access Code in Section 1 first!");
+                document.getElementById('school-id').focus();
+                return;
+            }
+
             const formData = new FormData();
             formData.append('author', document.getElementById('rep-name').value);
             formData.append('update', document.getElementById('update-text').value);
+            // We now send the School ID too
+            formData.append('school_id', schoolId); 
+            
             try {
                 await fetch(`/broadcast-update`, { method: 'POST', body: formData });
-                alert("✅ Broadcast Sent!");
+                alert("✅ Broadcast Sent & Notification Pushed!");
                 document.getElementById('update-text').value = '';
             } catch(err) {
                 alert("❌ Broadcast Failed.");

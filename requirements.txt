@@ -14,3 +14,4 @@ sentence-transformers
 jinja2
 python-docx
 docx2txt
+firebase-admin
