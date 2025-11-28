@@ -107,3 +107,15 @@ async def broadcast(update: str = Form(...), author: str = Form(...), school_id:
     except Exception as e:
         print(f"Notification Error: {e}")
         return {"message": "Broadcast saved, but Notification failed."}
+    
+    # --- NEW ENDPOINT FOR WEB USERS ---
+@app.post("/subscribe-web")
+async def subscribe_web(token: str = Form(...), topic: str = Form(...)):
+    try:
+        # Subscribe the browser token to the School Topic
+        response = messaging.subscribe_to_topic([token], topic)
+        print(f"Subscribed Web User to {topic}: {response.success_count} success")
+        return {"status": "success"}
+    except Exception as e:
+        print(f"Web Subscription Error: {e}")
+        return {"status": "error"}

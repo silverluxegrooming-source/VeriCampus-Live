@@ -8,10 +8,13 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link rel="manifest" href="/static/manifest.json">
     <meta name="theme-color" content="#1e3a8a">
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compat.js"></script>
     
     <style>
-        /* 1. Custom Tech Background */
+       /* WhatsApp-like System Font Stack */
         body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: #f0f9ff;
             background-image: 
                 radial-gradient(#1e3a8a 0.5px, transparent 0.5px), 
@@ -272,28 +275,61 @@
             renderSidebar();
             loadChatHistory();
 
-            // --- NEW: NOTIFICATION LOGIC ---
-            // This subscribes the phone to updates for THIS specific school ID
+            // ============================================
+            // NOTIFICATION LOGIC (HYBRID: APP + WEB)
+            // ============================================
+            
+            // OPTION A: NATIVE APP (ANDROID APK)
             if (window.Capacitor) {
                 try {
                     const PushNotifications = Capacitor.Plugins.PushNotifications;
                     const FCM = Capacitor.Plugins.FCM;
-
-                    // 1. Ask for permission
                     let permStatus = await PushNotifications.checkPermissions();
-                    if (permStatus.receive === 'prompt') {
-                        permStatus = await PushNotifications.requestPermissions();
-                    }
-
+                    if (permStatus.receive === 'prompt') permStatus = await PushNotifications.requestPermissions();
                     if (permStatus.receive === 'granted') {
                         await PushNotifications.register();
-                        
-                        // 2. Subscribe to the School's Topic (e.g. "FUTO-123")
                         await FCM.subscribeTo({ topic: school.id.toUpperCase() });
-                        // alert("Subscribed to updates for " + school.id); // Uncomment for testing
+                    }
+                } catch (e) { console.log("App Notification Error: " + e); }
+            } 
+            
+            // OPTION B: WEB APP (IPHONE / DESKTOP)
+            else {
+               // Your web app's Firebase configuration
+               const firebaseConfig = {
+                   apiKey: "AIzaSyADy57398AgmjhkaTUvTQpRQ1hdCijGgvs",
+                   authDomain: "vericampus-13104.firebaseapp.com",
+                   projectId: "vericampus-13104",
+                   storageBucket: "vericampus-13104.firebasestorage.app",
+                   messagingSenderId: "762945690586",
+                   appId: "1:762945690586:web:66e6a7fc5a524cb2c93ee3"
+            };
+                
+                // 2. PASTE YOUR VAPID KEY HERE 
+                const vapidKey = "BJlKbEwKwIv-JksOVjgKRimUu6VSC9eaoOSbsGjCJafMUW4bTWvDtR5ssc7Uvx3BWj3A9sYtdaWSqRrX3ovaSIU"; 
+
+                try {
+                    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+                    const messaging = firebase.messaging();
+
+                    // Request Permission
+                    await Notification.requestPermission();
+                    
+                    // Get Token
+                    const token = await messaging.getToken({ vapidKey: vapidKey });
+                    
+                    if (token) {
+                        // Send Token to Python Backend to Subscribe
+                        const formData = new FormData();
+                        formData.append('token', token);
+                        formData.append('topic', school.id.toUpperCase());
+                        
+                        await fetch('/subscribe-web', { method: 'POST', body: formData });
+                        console.log("Web User Subscribed!");
                     }
                 } catch (e) {
-                    console.log("Notification Setup Error: " + e);
+                    console.log("Web Notification Error: " + e);
+                    // Note: iOS requires 'Add to Home Screen' for this to work
                 }
             }
         }
