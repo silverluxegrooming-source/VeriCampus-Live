@@ -1,3 +1,6 @@
+from PIL import Image
+import pytesseract
+from langchain_core.documents import Document # Import Document object
 import os
 import time
 from dotenv import load_dotenv
@@ -57,8 +60,20 @@ def process_document(file_path, school_id):
             print("Detected TXT. Loading...")
             loader = TextLoader(file_path)
             docs = loader.load()
+        # --- NEW: IMAGE HANDLING ---
+        elif file_path.lower().endswith(('.png', '.jpg', '.jpeg')):
+            print("Detected Image. Running OCR...")
+            # Extract text from image
+            raw_text = pytesseract.image_to_string(Image.open(file_path))
+            
+            if not raw_text.strip():
+                return "Error: No text found in this image. Is it clear enough?"
+                
+            # Convert to LangChain Document format
+            docs = [Document(page_content=raw_text, metadata={"source": file_path})]
+        # ---------------------------
         else:
-            return "Error: Unsupported file type. Only PDF, DOCX, and TXT."
+            return "Error: Unsupported file type. Only PDF, DOCX, TXT PNG, JPG, and JPEG"
             
         if not docs:
             print("Error: Loader returned empty content.")
