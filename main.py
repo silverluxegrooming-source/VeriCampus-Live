@@ -5,6 +5,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, RedirectResponse
 import shutil
 import os
+import mimetypes
 from rag_engine import process_document, ask_vericampus, add_realtime_update
 
 # --- NEW FIREBASE IMPORTS ---
@@ -22,6 +23,10 @@ if not firebase_admin._apps:
         print("Firebase Initialized Successfully")
     except Exception as e:
         print(f"Firebase Init Error: {e}")
+
+ # --- 2. ADD THIS CONFIGURATION BLOCK ---
+# This tells the server: "If you see an .apk file, tell the browser it's an Android App"
+mimetypes.add_type('application/vnd.android.package-archive', '.apk')
 
 # --- CONFIG ---
 app.add_middleware(
