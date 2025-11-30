@@ -1,6 +1,6 @@
 from PIL import Image
 import pytesseract
-from langchain_core.documents import Document # Import Document object
+from langchain_core.documents import Document 
 import os
 import time
 from dotenv import load_dotenv

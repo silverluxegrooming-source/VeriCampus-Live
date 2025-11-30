@@ -23,27 +23,20 @@
             </div>
         </div>
         
-         <li><a href="/app" class="text-xs font-bold text-gray-300 hover:text-white bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg transition flex items-center gap-2">
+         <a href="/app" class="text-xs font-bold text-gray-300 hover:text-white bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg transition flex items-center gap-2">
             Open Student App <i class="fas fa-external-link-alt"></i>
         </a>
     </div>
 
     <div class="flex-1 overflow-y-auto p-4 md:p-8">
         <div class="max-w-4xl mx-auto space-y-8">
+            
             <div class="bg-gray-800 p-8 rounded-2xl border border-gray-700 shadow-2xl relative overflow-hidden group hover:border-green-500/30 transition-colors">
-               <div class="bg-gray-900/50 p-6 rounded-xl border border-dashed border-gray-600 hover:border-green-500/50 transition-colors text-center relative">
-                     <input type="file" id="file-input" accept=".pdf,.docx,.txt,.jpg,.jpeg,.png" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
-    
-                     <div id="upload-icon-area">
-                         <i class="fas fa-cloud-upload-alt text-4xl text-gray-600 mb-3 block"></i>
-                         <p class="text-sm text-gray-300 font-medium" id="file-label">Click to select Document</p>
-                         <p class="text-xs text-green-400 mt-2 font-bold">
-                         <i class="fas fa-check"></i> Supports: Handbooks, Past Questions, Memos
-                         </p>
-                         <p class="text-[10px] text-gray-500 mt-1">Formats: PDF, DOCX, TXT, JPG, PNG (OCR Enabled)</p>
-                     </div>
-                </div>
-                
+                <h3 class="text-lg font-bold mb-6 text-green-400 flex items-center gap-2 uppercase tracking-wider">
+                    <span class="bg-green-400/10 p-2 rounded-lg"><i class="fas fa-database"></i></span> 
+                    1. Manage School Database
+                </h3>
+
                 <div class="space-y-6 relative z-10">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
@@ -60,14 +53,19 @@
                             </div>
                         </div>
                     </div>
+
                     <div class="bg-gray-900/50 p-6 rounded-xl border border-dashed border-gray-600 hover:border-green-500/50 transition-colors text-center relative">
                        <input type="file" id="file-input" accept=".pdf,.docx,.txt,.jpg,.jpeg,.png" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
                         <div id="upload-icon-area">
                             <i class="fas fa-cloud-upload-alt text-4xl text-gray-600 mb-3 block"></i>
                             <p class="text-sm text-gray-300 font-medium" id="file-label">Click to select Document</p>
-                            <p class="text-xs text-gray-500 mt-1">Supports: PDF, DOCX, TXT, JPG, PNG, JPEG</p>
+                            <p class="text-xs text-green-400 mt-2 font-bold">
+                                <i class="fas fa-check"></i> Supports: Handbooks, PQs, Images
+                            </p>
+                            <p class="text-[10px] text-gray-500 mt-1">Formats: PDF, DOCX, TXT, JPG, PNG (OCR Enabled)</p>
                         </div>
                     </div>
+
                     <button onclick="uploadDocument()" id="upload-btn" class="w-full bg-gradient-to-r from-green-600 to-green-500 hover:from-green-500 hover:to-green-400 text-white font-bold py-4 rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-green-900/20 transform active:scale-[0.99]">
                         <span>Ingest to Database</span> <i class="fas fa-arrow-right"></i>
                     </button>
@@ -94,8 +92,6 @@
     </div>
     
     <script>
-        // ... (Paste your existing admin.html script here) ...
-        // --- INSTALL APP LOGIC ---
         let deferredPrompt;
         const installBtn = document.getElementById('install-btn');
         window.addEventListener('beforeinstallprompt', (e) => {
@@ -118,6 +114,8 @@
                 if(file.name.endsWith('.pdf')) icon = "fa-file-pdf";
                 if(file.name.endsWith('.docx')) icon = "fa-file-word";
                 if(file.name.endsWith('.txt')) icon = "fa-file-alt";
+                if(file.name.match(/\.(jpg|jpeg|png)$/i)) icon = "fa-image";
+                
                 document.getElementById('file-label').innerHTML = `<span class="text-green-400 font-bold"><i class="fas ${icon} mr-2"></i>${file.name}</span> selected`;
             }
         });
@@ -161,19 +159,15 @@
         }
 
         async function sendUpdate() {
-            // Get the School ID from the input field in Section 1
             const schoolId = document.getElementById('school-id').value.trim();
-            
             if (!schoolId) {
                 alert("⚠️ Please enter the School Access Code in Section 1 first!");
                 document.getElementById('school-id').focus();
                 return;
             }
-
             const formData = new FormData();
             formData.append('author', document.getElementById('rep-name').value);
             formData.append('update', document.getElementById('update-text').value);
-            // We now send the School ID too
             formData.append('school_id', schoolId); 
             
             try {
