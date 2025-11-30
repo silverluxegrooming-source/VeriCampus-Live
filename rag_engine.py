@@ -118,13 +118,23 @@ def ask_vericampus(question, school_id):
         namespace=school_id.upper()
     )
     
-    retriever = vector_store.as_retriever()
+    retriever = vector_store.as_retriever(search_kwargs={"k": 5}) # Increased context window to 5 chunks
     
-    template = """You are VeriCampus. Answer based on context.
+    # --- UPGRADED PROMPT FOR "TUTOR MODE" ---
+    template = """You are VeriCampus AI, an intelligent academic tutor for this university.
     
-    Context: {context}
-    Updates: {real_time_info}
-    Question: {question}
+    Your Goal:
+    1. If the user asks about rules/regulations (Handbook), quote the document accurately.
+    2. If the user asks to SOLVE a question (Past Question/Exam), do not just quote it. WORK IT OUT step-by-step.
+    
+    Context from Database:
+    {context}
+    
+    Real-Time Updates from Lecturers:
+    {real_time_info}
+    
+    Student Question: {question}
+    
     Answer:"""
     
     prompt = ChatPromptTemplate.from_template(template)
@@ -134,4 +144,5 @@ def ask_vericampus(question, school_id):
         {"context": retriever, "question": RunnablePassthrough(), "real_time_info": lambda x: rt_context}
         | prompt | llm | StrOutputParser()
     )
+    
     return chain.invoke(question)
