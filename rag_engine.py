@@ -45,11 +45,11 @@ real_time_updates = []
 # --- NEW: IMAGE ENHANCER FUNCTION ---
 def enhance_image_for_ocr(image_path):
     """
-    Cleans up an image to make it easier for Tesseract to read.
+    Super-Charged Image Enhancer:
     1. Grayscale
-    2. Resize (2x)
-    3. Increase Contrast
-    4. Binarize (Black & White)
+    2. Resize (4x) for maximum clarity
+    3. High Contrast
+    4. Binarization (Pure Black & White)
     """
     try:
         img = Image.open(image_path)
@@ -57,22 +57,28 @@ def enhance_image_for_ocr(image_path):
         # 1. Convert to Grayscale
         img = img.convert('L')
         
-        # 2. Resize: Make it 2x bigger (Helps read small text)
+        # 2. Resize: Make it 4x bigger (Crucial for small text/exams)
         width, height = img.size
-        new_size = (width * 2, height * 2)
+        new_size = (width * 4, height * 4) 
         img = img.resize(new_size, Image.Resampling.LANCZOS)
         
-        # 3. Increase Contrast
+        # 3. Increase Contrast (Make text darker)
         enhancer = ImageEnhance.Contrast(img)
-        img = enhancer.enhance(2.0) # Double the contrast
+        img = enhancer.enhance(2.5) 
         
         # 4. Sharpen
         img = img.filter(ImageFilter.SHARPEN)
+
+        # 5. Binarization (The Secret Sauce)
+        # This turns grey fuzz into sharp black text
+        thresh = 200
+        fn = lambda x : 255 if x > thresh else 0
+        img = img.point(fn, mode='1')
         
         return img
     except Exception as e:
         print(f"Image enhancement failed: {e}")
-        return Image.open(image_path) # Fallback to original
+        return Image.open(image_path)
 
 def process_document(file_path, school_id):
     print(f"--- STARTING PROCESSING: {file_path} ---")
