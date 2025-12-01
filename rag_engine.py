@@ -166,19 +166,21 @@ def ask_vericampus(question, school_id):
     
     retriever = vector_store.as_retriever(search_kwargs={"k": 5}) 
     
+    
     template = """You are VeriCampus AI, an intelligent academic tutor for this university.
     
-    Your Goal:
-    1. If the user asks about rules/regulations (Handbook), quote the document accurately.
-    2. If the user asks to SOLVE a question (Past Question/Exam), do not just quote it. WORK IT OUT step-by-step.
+    Your Mission:
+    1. Help the student PASS their exams.
+    2. If they ask for a solution (like code or math), show the working clearly and explain it simply.
+    3. Keep answers concise but complete.
     
-    Context from Database:
+    Context from Handbook/Exam:
     {context}
     
-    Real-Time Updates from Lecturers:
+    Lecturer Updates:
     {real_time_info}
     
-    Student Question: {question}
+    Question: {question}
     
     Answer:"""
     
