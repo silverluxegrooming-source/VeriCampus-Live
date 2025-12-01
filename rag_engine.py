@@ -6,7 +6,7 @@ import time
 import platform
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
-# --- SWITCHED BACK TO CLOUD ENDPOINT (SAVES RAM) ---
+# BACK TO LIGHTWEIGHT CLOUD ENDPOINT (No torch needed)
 from langchain_huggingface import HuggingFaceEndpointEmbeddings 
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_pinecone import PineconeVectorStore
@@ -16,6 +16,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
 
+# Windows Local Config
 if platform.system() == "Windows":
     pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
@@ -28,11 +29,10 @@ if not os.getenv("PINECONE_API_KEY"): raise ValueError("PINECONE_API_KEY missing
 
 print("Connecting to Cloud Systems...")
 
-# --- LIGHTWEIGHT CLOUD EMBEDDINGS ---
+# --- 1. LIGHTWEIGHT EMBEDDINGS (No Timeout param to avoid crash) ---
 embeddings = HuggingFaceEndpointEmbeddings(
     model="sentence-transformers/all-MiniLM-L6-v2",
-    huggingfacehub_api_token=os.getenv("HUGGINGFACEHUB_API_TOKEN"),
-    timeout=60 # Wait longer before failing
+    huggingfacehub_api_token=os.getenv("HUGGINGFACEHUB_API_TOKEN")
 )
 
 pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
@@ -62,28 +62,29 @@ def enhance_image_for_ocr(image_path):
         print(f"Enhance failed: {e}")
         return Image.open(image_path)
 
-# --- RETRY LOGIC WRAPPER ---
-def safe_embed_documents(documents, school_id, retries=3):
+# --- 2. MANUAL RETRY LOGIC (The Fix for 504 Errors) ---
+def safe_embed_documents(documents, school_id):
     """
-    Tries to upload to Pinecone. If HuggingFace is busy (504), 
-    it waits 5 seconds and tries again.
+    Manually retries the upload if HuggingFace is busy.
     """
-    for attempt in range(retries):
+    max_retries = 3
+    for attempt in range(max_retries):
         try:
+            print(f"Attempting upload {attempt+1}/{max_retries}...")
             PineconeVectorStore.from_documents(
                 documents=documents,
                 embedding=embeddings,
                 index_name=index_name,
                 namespace=school_id.upper()
             )
-            return True # Success
+            return True # Success!
         except Exception as e:
-            print(f"⚠️ Upload Attempt {attempt+1} failed: {e}")
-            if attempt < retries - 1:
+            print(f"⚠️ Attempt {attempt+1} failed: {e}")
+            if attempt < max_retries - 1:
                 print("Waiting 5 seconds before retrying...")
-                time.sleep(5)
+                time.sleep(5) # Pause before retry
             else:
-                return False # Failed after all retries
+                return False # Failed after all tries
 
 def process_document(file_path, school_id):
     print(f"--- STARTING PROCESSING: {file_path} ---")
@@ -117,13 +118,13 @@ def process_document(file_path, school_id):
         
         print(f"Uploading {len(all_splits)} chunks...")
         
-        # USE THE NEW SAFE UPLOAD
+        # USE SAFE UPLOAD
         success = safe_embed_documents(all_splits, school_id)
         
         if success:
             return f"Success! Knowledge Base Updated for {school_id}."
         else:
-            return "Error: Cloud Server busy. Please try uploading again in 1 minute."
+            return "Error: Cloud Server busy (504). Please click 'Ingest' again."
 
     except Exception as e:
         print(f"CRITICAL ERROR: {e}")
@@ -140,7 +141,7 @@ def ask_vericampus(question, school_id):
         namespace=school_id.upper()
     )
     
-    # Retry logic for retrieval as well
+    # Retry logic for retrieval too
     try:
         retriever = vector_store.as_retriever(search_kwargs={"k": 4})
         
@@ -163,4 +164,4 @@ def ask_vericampus(question, school_id):
         )
         return chain.invoke(question)
     except Exception as e:
-        return "Network busy. Please ask again."
+        return "Network busy. Please ask again in a few seconds."
