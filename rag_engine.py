@@ -1,20 +1,25 @@
-from PIL import Image
+from PIL import Image, ImageEnhance, ImageFilter
 import pytesseract
 from langchain_core.documents import Document 
 import os
 import time
+import platform
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
 from langchain_huggingface import HuggingFaceEndpointEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.vectorstores import FAISS
+from langchain_pinecone import PineconeVectorStore
+from pinecone import Pinecone
 # Loaders
 from langchain_community.document_loaders import PyPDFLoader, Docx2txtLoader, TextLoader
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
-from langchain_pinecone import PineconeVectorStore
-from pinecone import Pinecone
+
+# --- TESSERACT CONFIG FOR WINDOWS (LOCAL TESTING) ---
+if platform.system() == "Windows":
+    # Update this path if your installation is different
+    pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
 load_dotenv()
 
@@ -42,6 +47,38 @@ llm = ChatGroq(
 
 real_time_updates = [] 
 
+# --- NEW: IMAGE ENHANCER FUNCTION ---
+def enhance_image_for_ocr(image_path):
+    """
+    Cleans up an image to make it easier for Tesseract to read.
+    1. Grayscale
+    2. Resize (2x)
+    3. Increase Contrast
+    4. Binarize (Black & White)
+    """
+    try:
+        img = Image.open(image_path)
+        
+        # 1. Convert to Grayscale
+        img = img.convert('L')
+        
+        # 2. Resize: Make it 2x bigger (Helps read small text)
+        width, height = img.size
+        new_size = (width * 2, height * 2)
+        img = img.resize(new_size, Image.Resampling.LANCZOS)
+        
+        # 3. Increase Contrast
+        enhancer = ImageEnhance.Contrast(img)
+        img = enhancer.enhance(2.0) # Double the contrast
+        
+        # 4. Sharpen
+        img = img.filter(ImageFilter.SHARPEN)
+        
+        return img
+    except Exception as e:
+        print(f"Image enhancement failed: {e}")
+        return Image.open(image_path) # Fallback to original
+
 def process_document(file_path, school_id):
     print(f"--- STARTING PROCESSING: {file_path} ---")
     
@@ -60,26 +97,28 @@ def process_document(file_path, school_id):
             print("Detected TXT. Loading...")
             loader = TextLoader(file_path)
             docs = loader.load()
-        # --- NEW: IMAGE HANDLING ---
+            
+        # --- IMPROVED IMAGE HANDLING ---
         elif file_path.lower().endswith(('.png', '.jpg', '.jpeg')):
-            print("Detected Image. Running OCR...")
-            # Extract text from image
-            raw_text = pytesseract.image_to_string(Image.open(file_path))
+            print("Detected Image. optimizing for OCR...")
+            
+            # Use the Enhancer Function
+            clean_image = enhance_image_for_ocr(file_path)
+            
+            # Run OCR
+            raw_text = pytesseract.image_to_string(clean_image)
+            
+            # DEBUG: Print what it saw
+            print(f"--- OCR EXTRACTED TEXT ---\n{raw_text}\n--------------------------")
             
             if not raw_text.strip():
-                return "Error: No text found in this image. Is it clear enough?"
-                
-            # Convert to LangChain Document format
-            docs = [Document(page_content=raw_text, metadata={"source": file_path})]
-            # --- ADD THIS DEBUG LINE ---
-            print(f"--- OCR EXTRACTED TEXT ---\n{raw_text}\n--------------------------")
-            # ---------------------------
-
-            if not raw_text.strip():
                 return "Error: No text found. Is the image clear?"
-        # ---------------------------
+                
+            docs = [Document(page_content=raw_text, metadata={"source": file_path})]
+        # -------------------------------
+        
         else:
-            return "Error: Unsupported file type. Only PDF, DOCX, TXT PNG, JPG, and JPEG"
+            return "Error: Unsupported file type. Only PDF, DOCX, TXT, PNG, JPG, JPEG"
             
         if not docs:
             print("Error: Loader returned empty content.")
@@ -124,9 +163,8 @@ def ask_vericampus(question, school_id):
         namespace=school_id.upper()
     )
     
-    retriever = vector_store.as_retriever(search_kwargs={"k": 5}) # Increased context window to 5 chunks
+    retriever = vector_store.as_retriever(search_kwargs={"k": 5}) 
     
-    # --- UPGRADED PROMPT FOR "TUTOR MODE" ---
     template = """You are VeriCampus AI, an intelligent academic tutor for this university.
     
     Your Goal:
