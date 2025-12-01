@@ -146,20 +146,26 @@
             </div>
         </div>
 
-        <div class="bg-white p-3 border-t border-gray-200 flex-none z-30 w-full">
+       <div class="bg-white p-3 border-t border-gray-200 flex-none z-30 w-full">
             <div class="flex gap-2 max-w-4xl mx-auto items-end">
                 <div class="flex-1 bg-gray-100 rounded-2xl flex items-center px-4 border border-transparent focus-within:border-blue-300 focus-within:bg-white transition">
                     <input type="text" id="user-input" 
                            class="flex-1 bg-transparent border-0 text-sm focus:outline-none text-gray-800 placeholder-gray-500 py-3 max-h-32" 
                            placeholder="Ask a question..." 
-                           disabled autocomplete="off" onkeypress="handleEnter(event)">
+                           disabled
+                           autocomplete="off"
+                           onkeypress="handleEnter(event)">
+                    
+                    <button id="mic-btn" onclick="toggleVoice()" class="text-gray-400 hover:text-red-500 transition px-2">
+                        <i class="fas fa-microphone"></i>
+                    </button>
                 </div>
+                
                 <button onclick="sendMessage()" id="send-btn" class="bg-blue-900 text-white w-11 h-11 rounded-full flex-none flex items-center justify-center shadow-lg hover:bg-blue-800 transition transform active:scale-95 disabled:opacity-50" disabled>
                     <i class="fas fa-paper-plane text-sm pl-0.5"></i>
                 </button>
             </div>
         </div>
-    </div>
 
     <div id="login-modal" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white w-full max-w-sm rounded-2xl shadow-2xl p-6">
@@ -193,6 +199,62 @@
         let menuTargetIndex = null;
         let synth = window.speechSynthesis;
         let speakingMsgId = null; 
+
+        // --- VOICE RECOGNITION SETUP ---
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition;
+        let isListening = false;
+
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.continuous = false; // Stop after one sentence
+            recognition.lang = 'en-NG'; // Nigerian English!
+            recognition.interimResults = false;
+
+            recognition.onstart = function() {
+                isListening = true;
+                const micBtn = document.getElementById('mic-btn');
+                micBtn.classList.remove('text-gray-400');
+                micBtn.classList.add('text-red-600', 'animate-pulse');
+                document.getElementById('user-input').placeholder = "Listening...";
+            };
+
+            recognition.onend = function() {
+                isListening = false;
+                resetMicUI();
+            };
+
+            recognition.onresult = function(event) {
+                const transcript = event.results[0][0].transcript;
+                document.getElementById('user-input').value = transcript;
+                // Auto-send after speaking (Optional - remove next line if you want to edit first)
+                sendMessage(); 
+            };
+            
+            recognition.onerror = function(event) {
+                console.log("Voice Error:", event.error);
+                resetMicUI();
+            };
+        }
+
+        function toggleVoice() {
+            if (!SpeechRecognition) {
+                alert("Voice input is not supported on this browser/webview yet.");
+                return;
+            }
+            if (isListening) {
+                recognition.stop();
+            } else {
+                recognition.start();
+            }
+        }
+
+        function resetMicUI() {
+            const micBtn = document.getElementById('mic-btn');
+            micBtn.classList.remove('text-red-600', 'animate-pulse');
+            micBtn.classList.add('text-gray-400');
+            document.getElementById('user-input').placeholder = "Ask a question...";
+        }
 
         // INSTALL BTN
         let deferredPrompt;
