@@ -71,6 +71,12 @@ def process_document(file_path, school_id):
                 
             # Convert to LangChain Document format
             docs = [Document(page_content=raw_text, metadata={"source": file_path})]
+            # --- ADD THIS DEBUG LINE ---
+            print(f"--- OCR EXTRACTED TEXT ---\n{raw_text}\n--------------------------")
+            # ---------------------------
+
+            if not raw_text.strip():
+                return "Error: No text found. Is the image clear?"
         # ---------------------------
         else:
             return "Error: Unsupported file type. Only PDF, DOCX, TXT PNG, JPG, and JPEG"
