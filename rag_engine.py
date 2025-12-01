@@ -6,28 +6,33 @@ import time
 import platform
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
-from langchain_huggingface import HuggingFaceEndpointEmbeddings
+# --- CHANGED: Using Local Embeddings instead of Cloud Endpoint ---
+from langchain_huggingface import HuggingFaceEmbeddings 
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_pinecone import PineconeVectorStore
 from pinecone import Pinecone
-# Loaders
 from langchain_community.document_loaders import PyPDFLoader, Docx2txtLoader, TextLoader
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
 
+# Windows Local Config (Ignore on Render)
+if platform.system() == "Windows":
+    pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+
 load_dotenv()
 
-# Check Keys
+# Check Keys (We don't need HUGGINGFACEHUB_API_TOKEN anymore for local, but keep it for safety)
 if not os.getenv("GROQ_API_KEY"): raise ValueError("GROQ_API_KEY missing")
-if not os.getenv("HUGGINGFACEHUB_API_TOKEN"): raise ValueError("HUGGINGFACEHUB_API_TOKEN missing")
 if not os.getenv("PINECONE_API_KEY"): raise ValueError("PINECONE_API_KEY missing")
 
-print("Connecting to Cloud Systems...")
+print("Initializing System...")
 
-embeddings = HuggingFaceEndpointEmbeddings(
-    model="sentence-transformers/all-MiniLM-L6-v2",
-    huggingfacehub_api_token=os.getenv("HUGGINGFACEHUB_API_TOKEN")
+# --- THE FIX: RUNNING EMBEDDINGS LOCALLY ---
+# This runs inside your server. No network calls. No 504 Timeouts.
+print("Loading Local Embedding Model... (This happens once)")
+embeddings = HuggingFaceEmbeddings(
+    model_name="sentence-transformers/all-MiniLM-L6-v2"
 )
 
 pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
@@ -42,103 +47,68 @@ llm = ChatGroq(
 
 real_time_updates = [] 
 
-# --- NEW: IMAGE ENHANCER FUNCTION ---
 def enhance_image_for_ocr(image_path):
     """
-    Super-Charged Image Enhancer:
-    1. Grayscale
-    2. Resize (4x) for maximum clarity
-    3. High Contrast
-    4. Binarization (Pure Black & White)
+    Cleans up image for Tesseract
     """
     try:
         img = Image.open(image_path)
+        img = img.convert('L') # Grayscale
         
-        # 1. Convert to Grayscale
-        img = img.convert('L')
-        
-        # 2. Resize: Make it 4x bigger (Crucial for small text/exams)
+        # Resize x3 (Balance between speed and quality)
         width, height = img.size
-        new_size = (width * 4, height * 4) 
+        new_size = (width * 3, height * 3) 
         img = img.resize(new_size, Image.Resampling.LANCZOS)
         
-        # 3. Increase Contrast (Make text darker)
+        # Contrast
         enhancer = ImageEnhance.Contrast(img)
-        img = enhancer.enhance(2.5) 
+        img = enhancer.enhance(2.0) 
         
-        # 4. Sharpen
+        # Sharpen
         img = img.filter(ImageFilter.SHARPEN)
-
-        # 5. Binarization (The Secret Sauce)
-        # This turns grey fuzz into sharp black text
-        thresh = 200
-        fn = lambda x : 255 if x > thresh else 0
-        img = img.point(fn, mode='1')
         
         return img
     except Exception as e:
-        print(f"Image enhancement failed: {e}")
+        print(f"Enhance failed: {e}")
         return Image.open(image_path)
 
 def process_document(file_path, school_id):
     print(f"--- STARTING PROCESSING: {file_path} ---")
-    
     docs = []
     try:
-        # 1. LOAD
         if file_path.endswith(".pdf"):
-            print("Detected PDF. Loading...")
             loader = PyPDFLoader(file_path)
             docs = loader.load()
         elif file_path.endswith(".docx"):
-            print("Detected DOCX. Loading with Docx2txt...")
             loader = Docx2txtLoader(file_path)
             docs = loader.load()
         elif file_path.endswith(".txt"):
-            print("Detected TXT. Loading...")
             loader = TextLoader(file_path)
             docs = loader.load()
-            
-        # --- IMPROVED IMAGE HANDLING ---
         elif file_path.lower().endswith(('.png', '.jpg', '.jpeg')):
-            print("Detected Image. optimizing for OCR...")
-            
-            # Use the Enhancer Function
+            print("Detected Image. Running OCR...")
             clean_image = enhance_image_for_ocr(file_path)
-            
-            # Run OCR
             raw_text = pytesseract.image_to_string(clean_image)
             
-            # DEBUG: Print what it saw
-            print(f"--- OCR EXTRACTED TEXT ---\n{raw_text}\n--------------------------")
+            # Print text to logs so we can see what it found
+            print(f"--- EXTRACTED: ---\n{raw_text[:500]}...\n------------------")
             
-            if not raw_text.strip():
-                return "Error: No text found. Is the image clear?"
+            if len(raw_text.strip()) < 10:
+                return "Error: Image unclear. No text found."
                 
             docs = [Document(page_content=raw_text, metadata={"source": file_path})]
-        # -------------------------------
-        
         else:
-            return "Error: Unsupported file type. Only PDF, DOCX, TXT, PNG, JPG, JPEG"
+            return "Error: Unsupported file type."
             
-        if not docs:
-            print("Error: Loader returned empty content.")
-            return "Error: Document was empty."
-
-        print(f"Successfully Loaded {len(docs)} pages/sections.")
+        if not docs: return "Error: Document empty."
 
         # 2. SPLIT
-        print("Splitting text into chunks...")
         text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
         all_splits = text_splitter.split_documents(docs)
         
-        if not all_splits:
-            print("Error: Splitter returned 0 chunks.")
-            return "Error: Could not extract text chunks."
-
-        print(f"Created {len(all_splits)} chunks. Uploading to Pinecone...")
+        print(f"Uploading {len(all_splits)} chunks to Pinecone...")
         
-        # 3. UPLOAD
+        # 3. UPLOAD (Using Local Embeddings - FAST)
         PineconeVectorStore.from_documents(
             documents=all_splits,
             embedding=embeddings,
@@ -146,11 +116,10 @@ def process_document(file_path, school_id):
             namespace=school_id.upper()
         )
         
-        print("--- DONE! DATA SAVED ---")
-        return f"Success! {len(all_splits)} chunks saved to {school_id} database."
+        return f"Success! Knowledge Base Updated for {school_id}."
 
     except Exception as e:
-        print(f"CRITICAL ERROR in process_document: {e}")
+        print(f"CRITICAL ERROR: {e}")
         return f"Processing Error: {str(e)}"
 
 def add_realtime_update(update_text, author):
@@ -164,20 +133,19 @@ def ask_vericampus(question, school_id):
         namespace=school_id.upper()
     )
     
-    retriever = vector_store.as_retriever(search_kwargs={"k": 5}) 
+    retriever = vector_store.as_retriever(search_kwargs={"k": 4})
     
+    template = """You are VeriCampus AI, an intelligent academic tutor.
     
-    template = """You are VeriCampus AI, an intelligent academic tutor for this university.
+    Mission:
+    1. Answer the student's question based strictly on the Context provided.
+    2. If the Context contains exam questions, SOLVE them step-by-step.
+    3. If the OCR text is messy (typos), try to infer the correct meaning.
     
-    Your Mission:
-    1. Help the student PASS their exams.
-    2. If they ask for a solution (like code or math), show the working clearly and explain it simply.
-    3. Keep answers concise but complete.
-    
-    Context from Handbook/Exam:
+    Context:
     {context}
     
-    Lecturer Updates:
+    Updates:
     {real_time_info}
     
     Question: {question}
