@@ -16,11 +16,6 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
 
-# --- TESSERACT CONFIG FOR WINDOWS (LOCAL TESTING) ---
-if platform.system() == "Windows":
-    # Update this path if your installation is different
-    pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
-
 load_dotenv()
 
 # Check Keys
