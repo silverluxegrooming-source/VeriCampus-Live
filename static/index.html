@@ -357,7 +357,6 @@
             
             // OPTION B: WEB APP (IPHONE / DESKTOP)
             else {
-               // Your web app's Firebase configuration
                const firebaseConfig = {
                    apiKey: "AIzaSyADy57398AgmjhkaTUvTQpRQ1hdCijGgvs",
                    authDomain: "vericampus-13104.firebaseapp.com",
@@ -365,35 +364,43 @@
                    storageBucket: "vericampus-13104.firebasestorage.app",
                    messagingSenderId: "762945690586",
                    appId: "1:762945690586:web:66e6a7fc5a524cb2c93ee3"
-            };
-                
-                // 2. PASTE YOUR VAPID KEY HERE 
-                const vapidKey = "BJlKbEwKwIv-JksOVjgKRimUu6VSC9eaoOSbsGjCJafMUW4bTWvDtR5ssc7Uvx3BWj3A9sYtdaWSqRrX3ovaSIU"; 
+               };
+               
+               const vapidKey = "BJlKbEwKwIv-JksOVjgKRimUu6VSC9eaoOSbsGjCJafMUW4bTWvDtR5ssc7Uvx3BWj3A9sYtdaWSqRrX3ovaSIU"; 
 
-                try {
-                    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-                    const messaging = firebase.messaging();
+               try {
+                   if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+                   const messaging = firebase.messaging();
 
-                    // Request Permission
-                    await Notification.requestPermission();
-                    
-                    // Get Token
-                    const token = await messaging.getToken({ vapidKey: vapidKey });
-                    
-                    if (token) {
-                        // Send Token to Python Backend to Subscribe
-                        const formData = new FormData();
-                        formData.append('token', token);
-                        formData.append('topic', school.id.toUpperCase());
-                        
-                        await fetch('/subscribe-web', { method: 'POST', body: formData });
-                        console.log("Web User Subscribed!");
-                    }
-                } catch (e) {
-                    console.log("Web Notification Error: " + e);
-                    // Note: iOS requires 'Add to Home Screen' for this to work
-                }
+                   // Request Permission
+                   await Notification.requestPermission();
+                   
+                   // Get Token
+                   const token = await messaging.getToken({ vapidKey: vapidKey });
+                   
+                   if (token) {
+                       // Send Token to Python Backend to Subscribe
+                       const formData = new FormData();
+                       formData.append('token', token);
+                       formData.append('topic', school.id.toUpperCase());
+                       
+                       await fetch('/subscribe-web', { method: 'POST', body: formData });
+                       console.log("Web User Subscribed!");
+                   }
+               } catch (e) {
+                   console.log("Web Notification Error: " + e);
+               }
             }
+        }
+
+        // --- SERVICE WORKER REGISTRATION (ADDED) ---
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/static/firebase-messaging-sw.js')
+            .then(function(registration) {
+                console.log('Service Worker Registered!', registration.scope);
+            }).catch(function(err) {
+                console.log('Service Worker Failed:', err);
+            });
         }
 
         // ... [Remaining Functions for Chat, Options, etc. are same as before] ...
