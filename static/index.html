@@ -191,6 +191,18 @@
     </div>
 
     <script>
+        // --- IPHONE KEYBOARD FIX ---
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', () => {
+                const inputBar = document.querySelector('.bg-white.p-3.border-t');
+                if (inputBar) {
+                    // Adjust bottom padding based on keyboard height
+                    document.body.style.height = window.visualViewport.height + 'px';
+                    window.scrollTo(0, 0);
+                }
+            });
+        }
+
         // --- LOGIC ---
         let schools = JSON.parse(localStorage.getItem('vericampus_schools_v2')) || [];
         let pinned = JSON.parse(localStorage.getItem('vericampus_pinned')) || [];
@@ -357,6 +369,8 @@
             
             // OPTION B: WEB APP (IPHONE / DESKTOP)
             else {
+               console.log("Web Mode Detected. Initializing Firebase...");
+               
                const firebaseConfig = {
                    apiKey: "AIzaSyADy57398AgmjhkaTUvTQpRQ1hdCijGgvs",
                    authDomain: "vericampus-13104.firebaseapp.com",
@@ -372,28 +386,44 @@
                    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
                    const messaging = firebase.messaging();
 
-                   // Request Permission
-                   await Notification.requestPermission();
+                   // 1. Request Permission
+                   const permission = await Notification.requestPermission();
+                   if (permission !== 'granted') {
+                       alert("Please allow notifications to get updates!");
+                       return;
+                   }
                    
-                   // Get Token
+                   // 2. Get Token
+                   console.log("Getting Web Token...");
                    const token = await messaging.getToken({ vapidKey: vapidKey });
                    
                    if (token) {
-                       // Send Token to Python Backend to Subscribe
+                       console.log("Token Received:", token);
+                       
+                       // 3. Send to Backend
                        const formData = new FormData();
                        formData.append('token', token);
                        formData.append('topic', school.id.toUpperCase());
                        
-                       await fetch('/subscribe-web', { method: 'POST', body: formData });
-                       console.log("Web User Subscribed!");
+                       const response = await fetch('/subscribe-web', { method: 'POST', body: formData });
+                       const result = await response.json();
+                       
+                       if(result.status === 'success') {
+                           console.log("✅ Web User Successfully Subscribed!");
+                       } else {
+                           console.error("❌ Backend Subscription Failed:", result);
+                       }
+                   } else {
+                       console.error("❌ No Token Received from Firebase.");
                    }
                } catch (e) {
-                   console.log("Web Notification Error: " + e);
+                   console.error("Web Notification Error: ", e);
+                   alert("Notification Error: " + e.message);
                }
             }
         }
 
-        // --- SERVICE WORKER REGISTRATION (ADDED) ---
+        // --- SERVICE WORKER REGISTRATION ---
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/static/firebase-messaging-sw.js')
             .then(function(registration) {
