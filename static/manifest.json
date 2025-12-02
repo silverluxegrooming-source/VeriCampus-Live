@@ -1,7 +1,7 @@
 {
   "name": "VeriCampus",
   "short_name": "VeriCampus",
-  "start_url": "/",
+  "start_url": "/app",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#1e3a8a",
