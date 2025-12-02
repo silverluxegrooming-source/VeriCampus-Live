@@ -32,6 +32,12 @@ mimetypes.add_type('application/vnd.android.package-archive', '.apk')
 app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"]
 )
+
+# --- ADD THIS ROUTE FOR SERVICE WORKER ---
+@app.get("/firebase-messaging-sw.js")
+async def get_service_worker():
+    return FileResponse('static/firebase-messaging-sw.js', media_type='application/javascript')
+
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # --- AUTH LOGIC ---
