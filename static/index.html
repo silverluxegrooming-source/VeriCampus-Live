@@ -221,46 +221,72 @@
         async function toggleVoice() {
             // 1. NATIVE ANDROID APP
             if (window.Capacitor) {
-                const SpeechRecognition = Capacitor.Plugins.SpeechRecognition;
-                // Check Permission
-                const { permission } = await SpeechRecognition.hasPermission();
-                if (!permission) { await SpeechRecognition.requestPermission(); return; }
+                try {
+                    const SpeechRecognition = Capacitor.Plugins.SpeechRecognition;
+                    if (!SpeechRecognition) {
+                        alert("Speech Plugin not found!");
+                        return;
+                    }
 
-                if (isListening) {
-                    await SpeechRecognition.stop();
-                    isListening = false;
-                    resetMicUI();
-                } else {
-                    isListening = true;
-                    const micBtn = document.getElementById('mic-btn');
-                    micBtn.classList.remove('text-gray-400');
-                    micBtn.classList.add('text-red-600', 'animate-pulse');
-                    document.getElementById('user-input').placeholder = "Listening...";
+                    // Check Permission
+                    // Note: Some versions return { permission: boolean } others return { value: boolean }
+                    const status = await SpeechRecognition.hasPermission();
+                    
+                    // Force request if not granted
+                    if (!status.permission && !status.value) {
+                        await SpeechRecognition.requestPermission();
+                        return; 
+                    }
 
-                    // Start Listening
-                    SpeechRecognition.start({
-                        language: "en-NG",
-                        maxResults: 1,
-                        prompt: "Speak now...",
-                        partialResults: false,
-                        popup: false
-                    }).then((result) => {
-                        if (result.matches && result.matches.length > 0) {
-                            document.getElementById('user-input').value = result.matches[0];
-                            sendMessage();
-                        }
+                    if (isListening) {
+                        await SpeechRecognition.stop();
                         isListening = false;
                         resetMicUI();
-                    });
+                    } else {
+                        isListening = true;
+                        const micBtn = document.getElementById('mic-btn');
+                        micBtn.classList.remove('text-gray-400');
+                        micBtn.classList.add('text-red-600', 'animate-pulse');
+                        document.getElementById('user-input').placeholder = "Listening...";
+
+                        // Start Listening
+                        await SpeechRecognition.start({
+                            language: "en-NG",
+                            maxResults: 1,
+                            prompt: "Speak now...",
+                            partialResults: false,
+                            popup: false
+                        });
+                        
+                        // Add listener for results (depends on plugin version, sometimes it returns promise, sometimes event)
+                        SpeechRecognition.addListener('partialResults', (data) => {
+                             if(data.matches && data.matches.length > 0) {
+                                 document.getElementById('user-input').value = data.matches[0];
+                             }
+                        });
+                        
+                        // For the Promise-based return (Community plugin standard)
+                        // Note: The start() promise typically resolves when listening STOPS and returns data
+                        // But we handle UI updates here just in case.
+                    }
+                } catch (e) {
+                    alert("Voice Error: " + JSON.stringify(e));
+                    isListening = false;
+                    resetMicUI();
                 }
             } 
+            
             // 2. WEB BROWSER
             else {
                 if (!window.SpeechRecognition && !window.webkitSpeechRecognition) {
                     alert("Voice input not supported on this browser.");
                     return;
                 }
-                if (isListening) { recognition.stop(); } else { recognition.start(); }
+                if (isListening) {
+                    recognition.stop();
+                } else {
+                    recognition.start();
+                }
             }
         }
 
