@@ -3,16 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
-    <title>VeriCampus Ai</title>
+    <title>VeriCampus AI</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link rel="manifest" href="/static/manifest.json">
     <meta name="theme-color" content="#1e3a8a">
+    
     <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compat.js"></script>
     
     <style>
-       /* WhatsApp-like System Font Stack */
+        /* WhatsApp-like System Font Stack */
         body { 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: #f0f9ff;
@@ -34,7 +35,7 @@
             background-color: #e5ddd5; 
         }
         
-        /* 2. Bubbles */
+        /* Message Bubbles */
         .msg-sent { 
             background: #1e3a8a; color: white; 
             border-radius: 18px 18px 4px 18px; 
@@ -51,37 +52,17 @@
             border: 1px solid #e5e7eb; 
         }
         
-        /* 3. GEMINI LOADING ANIMATION */
-        @keyframes spin-ring {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        .gemini-loader {
-            position: relative;
-            width: 40px;
-            height: 40px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .gemini-ring {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            border: 3px solid transparent;
-            border-top-color: #1e3a8a;
-            border-right-color: #60a5fa;
-            border-radius: 50%;
-            animation: spin-ring 1s linear infinite;
-        }
+        /* Loader */
+        @keyframes spin-ring { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .gemini-loader { position: relative; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; }
+        .gemini-ring { position: absolute; width: 100%; height: 100%; border: 3px solid transparent; border-top-color: #1e3a8a; border-right-color: #60a5fa; border-radius: 50%; animation: spin-ring 1s linear infinite; }
         .gemini-logo { width: 24px; height: 24px; object-fit: contain; z-index: 10; }
 
-        /* 4. UTILS */
+        /* Utils */
         .msg-actions { opacity: 0; transition: opacity 0.2s; display: flex; gap: 6px; margin-top: 4px; }
         .msg-wrapper:hover .msg-actions, .msg-wrapper.active .msg-actions { opacity: 1; }
         .action-btn { padding: 4px 8px; background: #f3f4f6; border-radius: 6px; color: #6b7280; cursor: pointer; font-size: 11px; }
         .action-btn:hover { background: #e5e7eb; color: #1e3a8a; transform: scale(1.05); }
-        .action-btn.active { background: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; }
         .active-school { background-color: #eff6ff; border-left: 4px solid #1e3a8a; }
         .sidebar-transition { transition: transform 0.3s ease-in-out; }
     </style>
@@ -98,14 +79,13 @@
     <div id="sidebar" class="fixed inset-y-0 left-0 w-[280px] bg-white border-r border-gray-200 flex flex-col z-50 transform -translate-x-full md:relative md:translate-x-0 sidebar-transition shadow-2xl md:shadow-none flex-none">
         <div class="p-4 border-b border-gray-100 bg-gray-50">
             <div class="flex justify-between items-center mb-4">
-               <div class="flex items-center gap-2">
-               <img src="/static/logo.png" onerror="this.style.display='none'" class="w-8 h-8 rounded-lg object-contain">
-               <h2 class="font-bold text-lg text-gray-800">VeriCampus AI</h2> 
-            </div>
+                <div class="flex items-center gap-2">
+                    <img src="/static/logo.png" onerror="this.style.display='none'" class="w-8 h-8 rounded-lg object-contain">
+                    <h2 class="font-bold text-lg text-gray-800">VeriCampus AI</h2> 
+                </div>
                 <button onclick="closeSidebar()" class="md:hidden text-gray-500 p-2"><i class="fas fa-times"></i></button>
             </div>
-            <input type="text" id="search-school" oninput="filterSchools()" placeholder="Search chats..." 
-                   class="w-full bg-white border border-gray-200 text-gray-700 text-sm rounded-lg pl-4 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-100 transition">
+            <input type="text" id="search-school" oninput="filterSchools()" placeholder="Search chats..." class="w-full bg-white border border-gray-200 text-gray-700 text-sm rounded-lg pl-4 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-100 transition">
         </div>
         
         <div id="school-list" class="flex-1 overflow-y-auto p-2 space-y-1"></div>
@@ -114,8 +94,7 @@
             <button onclick="showLoginModal()" class="w-full bg-blue-50 text-blue-700 py-3 rounded-xl font-semibold hover:bg-blue-100 transition flex items-center justify-center gap-2 border border-blue-200">
                 <i class="fas fa-plus"></i> Add School
             </button>
-            
-            <a href="/admin"  target="_blank" class="w-full bg-gray-900 text-white py-3 rounded-xl font-semibold hover:bg-gray-800 transition flex items-center justify-center gap-2 text-sm shadow-lg">
+            <a href="/admin" target="_blank" class="w-full bg-gray-900 text-white py-3 rounded-xl font-semibold hover:bg-gray-800 transition flex items-center justify-center gap-2 text-sm shadow-lg">
                 <i class="fas fa-user-shield"></i> Admin Panel
             </a>
         </div>
@@ -146,7 +125,7 @@
             </div>
         </div>
 
-       <div class="bg-white p-3 border-t border-gray-200 flex-none z-30 w-full">
+        <div class="bg-white p-3 border-t border-gray-200 flex-none z-30 w-full">
             <div class="flex gap-2 max-w-4xl mx-auto items-end">
                 <div class="flex-1 bg-gray-100 rounded-2xl flex items-center px-4 border border-transparent focus-within:border-blue-300 focus-within:bg-white transition">
                     <input type="text" id="user-input" 
@@ -155,17 +134,16 @@
                            disabled
                            autocomplete="off"
                            onkeypress="handleEnter(event)">
-                    
                     <button id="mic-btn" onclick="toggleVoice()" class="text-gray-400 hover:text-red-500 transition px-2">
                         <i class="fas fa-microphone"></i>
                     </button>
                 </div>
-                
                 <button onclick="sendMessage()" id="send-btn" class="bg-blue-900 text-white w-11 h-11 rounded-full flex-none flex items-center justify-center shadow-lg hover:bg-blue-800 transition transform active:scale-95 disabled:opacity-50" disabled>
                     <i class="fas fa-paper-plane text-sm pl-0.5"></i>
                 </button>
             </div>
         </div>
+    </div>
 
     <div id="login-modal" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white w-full max-w-sm rounded-2xl shadow-2xl p-6">
@@ -196,14 +174,13 @@
             window.visualViewport.addEventListener('resize', () => {
                 const inputBar = document.querySelector('.bg-white.p-3.border-t');
                 if (inputBar) {
-                    // Adjust bottom padding based on keyboard height
-                    document.body.style.height = window.visualViewport.height + 'px';
-                    window.scrollTo(0, 0);
+                    // Force scrollTo bottom when keyboard opens to keep input in view
+                    window.scrollTo(0, 0); 
                 }
             });
         }
 
-        // --- LOGIC ---
+        // --- STATE & VARS ---
         let schools = JSON.parse(localStorage.getItem('vericampus_schools_v2')) || [];
         let pinned = JSON.parse(localStorage.getItem('vericampus_pinned')) || [];
         let chatHistory = JSON.parse(localStorage.getItem('vericampus_history_v2')) || {};
@@ -219,8 +196,8 @@
 
         if (SpeechRecognition) {
             recognition = new SpeechRecognition();
-            recognition.continuous = false; // Stop after one sentence
-            recognition.lang = 'en-NG'; // Nigerian English!
+            recognition.continuous = false;
+            recognition.lang = 'en-NG';
             recognition.interimResults = false;
 
             recognition.onstart = function() {
@@ -231,33 +208,59 @@
                 document.getElementById('user-input').placeholder = "Listening...";
             };
 
-            recognition.onend = function() {
-                isListening = false;
-                resetMicUI();
-            };
-
+            recognition.onend = function() { isListening = false; resetMicUI(); };
+            
             recognition.onresult = function(event) {
                 const transcript = event.results[0][0].transcript;
                 document.getElementById('user-input').value = transcript;
-                // Auto-send after speaking (Optional - remove next line if you want to edit first)
                 sendMessage(); 
             };
-            
-            recognition.onerror = function(event) {
-                console.log("Voice Error:", event.error);
-                resetMicUI();
-            };
+            recognition.onerror = function(event) { resetMicUI(); };
         }
 
-        function toggleVoice() {
-            if (!SpeechRecognition) {
-                alert("Voice input is not supported on this browser/webview yet.");
-                return;
-            }
-            if (isListening) {
-                recognition.stop();
-            } else {
-                recognition.start();
+        async function toggleVoice() {
+            // 1. NATIVE ANDROID APP
+            if (window.Capacitor) {
+                const SpeechRecognition = Capacitor.Plugins.SpeechRecognition;
+                // Check Permission
+                const { permission } = await SpeechRecognition.hasPermission();
+                if (!permission) { await SpeechRecognition.requestPermission(); return; }
+
+                if (isListening) {
+                    await SpeechRecognition.stop();
+                    isListening = false;
+                    resetMicUI();
+                } else {
+                    isListening = true;
+                    const micBtn = document.getElementById('mic-btn');
+                    micBtn.classList.remove('text-gray-400');
+                    micBtn.classList.add('text-red-600', 'animate-pulse');
+                    document.getElementById('user-input').placeholder = "Listening...";
+
+                    // Start Listening
+                    SpeechRecognition.start({
+                        language: "en-NG",
+                        maxResults: 1,
+                        prompt: "Speak now...",
+                        partialResults: false,
+                        popup: false
+                    }).then((result) => {
+                        if (result.matches && result.matches.length > 0) {
+                            document.getElementById('user-input').value = result.matches[0];
+                            sendMessage();
+                        }
+                        isListening = false;
+                        resetMicUI();
+                    });
+                }
+            } 
+            // 2. WEB BROWSER
+            else {
+                if (!window.SpeechRecognition && !window.webkitSpeechRecognition) {
+                    alert("Voice input not supported on this browser.");
+                    return;
+                }
+                if (isListening) { recognition.stop(); } else { recognition.start(); }
             }
         }
 
@@ -268,7 +271,7 @@
             document.getElementById('user-input').placeholder = "Ask a question...";
         }
 
-        // INSTALL BTN
+        // --- INSTALL LOGIC ---
         let deferredPrompt;
         const installBtn = document.getElementById('install-btn');
         window.addEventListener('beforeinstallprompt', (e) => {
@@ -287,7 +290,7 @@
         renderSidebar();
         if(schools.length > 0) selectSchool(schools[0]); else showLoginModal();
 
-        // UI HELPERS
+        // --- UI FUNCTIONS ---
         function openSidebar() { document.getElementById('sidebar').classList.remove('-translate-x-full'); document.getElementById('sidebar-overlay').classList.remove('hidden'); }
         function closeSidebar() { document.getElementById('sidebar').classList.add('-translate-x-full'); document.getElementById('sidebar-overlay').classList.add('hidden'); }
         function showLoginModal() { document.getElementById('login-modal').style.display = 'flex'; document.getElementById('new-school-id').focus(); }
@@ -386,21 +389,25 @@
                    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
                    const messaging = firebase.messaging();
 
-                   // 1. Request Permission
+                   // 1. Register SW Explicitly
+                   const registration = await navigator.serviceWorker.register('/static/firebase-messaging-sw.js');
+                   await navigator.serviceWorker.ready;
+
+                   // 2. Request Permission
                    const permission = await Notification.requestPermission();
                    if (permission !== 'granted') {
                        alert("Please allow notifications to get updates!");
                        return;
                    }
                    
-                   // 2. Get Token
-                   console.log("Getting Web Token...");
-                   const token = await messaging.getToken({ vapidKey: vapidKey });
+                   // 3. Get Token with SW Reg
+                   const token = await messaging.getToken({ 
+                       vapidKey: vapidKey,
+                       serviceWorkerRegistration: registration
+                   });
                    
                    if (token) {
                        console.log("Token Received:", token);
-                       
-                       // 3. Send to Backend
                        const formData = new FormData();
                        formData.append('token', token);
                        formData.append('topic', school.id.toUpperCase());
@@ -418,12 +425,12 @@
                    }
                } catch (e) {
                    console.error("Web Notification Error: ", e);
-                   alert("Notification Error: " + e.message);
+                   // alert("Notification Error: " + e.message); // Uncomment to debug
                }
             }
         }
 
-        // --- SERVICE WORKER REGISTRATION ---
+        // --- SERVICE WORKER REGISTRATION (Global) ---
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/static/firebase-messaging-sw.js')
             .then(function(registration) {
@@ -433,7 +440,7 @@
             });
         }
 
-        // ... [Remaining Functions for Chat, Options, etc. are same as before] ...
+        // --- HELPER FUNCTIONS ---
         function showOptions(e, index) { e.stopPropagation(); menuTargetIndex = index; document.getElementById('options-menu').classList.remove('hidden'); const content = document.getElementById('options-content'); if(window.innerWidth >= 768) { const rect = e.target.getBoundingClientRect(); content.style.top = `${rect.top + 20}px`; content.style.left = `${rect.left - 150}px`; } }
         function hideOptions() { document.getElementById('options-menu').classList.add('hidden'); }
         function menuAction(action) { const target = schools[menuTargetIndex]; if(action === 'rename') { const newName = prompt("Rename:", target.name); if(newName) target.name = newName.trim(); } else if (action === 'pin') { pinned.includes(target.id) ? pinned = pinned.filter(id=>id!==target.id) : pinned.push(target.id); } else if (action === 'share') { navigator.clipboard.writeText(target.id).then(()=>alert("ID Copied!")); } else if (action === 'delete') { if(confirm(`Delete ${target.name}?`)) { schools.splice(menuTargetIndex, 1); delete chatHistory[target.id]; if(currentSchoolObj?.id === target.id) { currentSchoolObj = null; location.reload(); } } } saveData(); renderSidebar(); }
@@ -448,7 +455,35 @@
         function regenerate(aiIndex) { const userIndex = aiIndex - 1; if(userIndex >= 0) { const userText = chatHistory[currentSchoolObj.id][userIndex].text; chatHistory[currentSchoolObj.id].splice(aiIndex, 1); saveData(); loadChatHistory(); sendMessage(userText, true); } }
         function shareText(text) { if (navigator.share) { navigator.share({ title: 'VeriCampus Answer', text: text.replace(/<br>/g, '\n') }); } else { copyText(text); } }
         function handleEnter(e) { if(e.key === 'Enter') sendMessage(); }
-        async function sendMessage(overrideText = null, skipUserAdd = false) { const input = document.getElementById('user-input'); const message = overrideText || input.value.trim(); if (!message) return; const chatBox = document.getElementById('chat-box'); const time = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); if (!skipUserAdd) { saveMessage('user', message); loadChatHistory(); } input.value = ''; setTimeout(() => chatBox.scrollTop = chatBox.scrollHeight, 50); const loadingId = "loading-" + Date.now(); chatBox.innerHTML += `<div id="${loadingId}" class="flex items-center gap-3 p-4 bg-white rounded-xl border border-gray-100 shadow-sm w-fit"><div class="gemini-loader"><div class="gemini-ring"></div><img src="/static/logo.png" onerror="this.style.display='none'" class="gemini-logo"></div><span class="text-sm text-blue-600 font-semibold animate-pulse">Just a sec...</span></div>`; chatBox.scrollTop = chatBox.scrollHeight; try { const formData = new FormData(); formData.append('question', message); formData.append('school_id', currentSchoolObj.id); const response = await fetch(`/chat`, { method: 'POST', body: formData }); const data = await response.json(); document.getElementById(loadingId).remove(); const formatted = data.answer.replace(/\n/g, '<br>'); saveMessage('ai', formatted); loadChatHistory(); } catch (err) { document.getElementById(loadingId).remove(); alert("Network Error"); } }
+        
+        async function sendMessage(overrideText = null, skipUserAdd = false) { 
+            const input = document.getElementById('user-input'); 
+            const message = overrideText || input.value.trim(); 
+            if (!message) return; 
+            const chatBox = document.getElementById('chat-box'); 
+            const time = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); 
+            if (!skipUserAdd) { saveMessage('user', message); loadChatHistory(); } 
+            input.value = ''; 
+            setTimeout(() => chatBox.scrollTop = chatBox.scrollHeight, 50); 
+            const loadingId = "loading-" + Date.now(); 
+            chatBox.innerHTML += `<div id="${loadingId}" class="flex items-center gap-3 p-4 bg-white rounded-xl border border-gray-100 shadow-sm w-fit"><div class="gemini-loader"><div class="gemini-ring"></div><img src="/static/logo.png" onerror="this.style.display='none'" class="gemini-logo"></div><span class="text-sm text-blue-600 font-semibold animate-pulse">Just a sec...</span></div>`; 
+            chatBox.scrollTop = chatBox.scrollHeight; 
+            try { 
+                const formData = new FormData(); 
+                formData.append('question', message); 
+                formData.append('school_id', currentSchoolObj.id); 
+                const response = await fetch(`/chat`, { method: 'POST', body: formData }); 
+                const data = await response.json(); 
+                document.getElementById(loadingId).remove(); 
+                const formatted = data.answer.replace(/\n/g, '<br>'); 
+                saveMessage('ai', formatted); 
+                loadChatHistory(); 
+            } catch (err) { 
+                document.getElementById(loadingId).remove(); 
+                alert("Network Error"); 
+            } 
+        }
+        
         function saveMessage(sender, text) { if(!chatHistory[currentSchoolObj.id]) chatHistory[currentSchoolObj.id] = []; chatHistory[currentSchoolObj.id].push({ sender: sender, text: text, time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) }); saveData(); }
         function clearChat() { if(confirm("Clear chat history?")) { delete chatHistory[currentSchoolObj.id]; saveData(); loadChatHistory(); } }
         function filterSchools() { const query = document.getElementById('search-school').value.toLowerCase(); renderSidebar(query); }
