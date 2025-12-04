@@ -81,7 +81,7 @@
             <div class="flex justify-between items-center mb-4">
                 <div class="flex items-center gap-2">
                     <img src="/static/logo.png" onerror="this.style.display='none'" class="w-8 h-8 rounded-lg object-contain">
-                    <h2 class="font-bold text-lg text-gray-800">VeriCampus AI</h2> 
+                    <h2 class="font-bold text-lg text-gray-800">VeriCampus</h2>  <span class="font-bold text-lg text-blue-800">AI</span></span>
                 </div>
                 <button onclick="closeSidebar()" class="md:hidden text-gray-500 p-2"><i class="fas fa-times"></i></button>
             </div>
@@ -218,7 +218,7 @@
             recognition.onerror = function(event) { resetMicUI(); };
         }
 
-        async function toggleVoice() {
+       async function toggleVoice() {
             // 1. NATIVE ANDROID APP
             if (window.Capacitor) {
                 const SpeechRecognition = Capacitor.Plugins.SpeechRecognition;
