@@ -2,158 +2,158 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>VeriCampus AI</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link rel="manifest" href="/static/manifest.json">
     <meta name="theme-color" content="#1e3a8a">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
+    <script>
+        // Placeholder to prevent errors if Capacitor isn't loaded yet
+        window.Capacitor = window.Capacitor || undefined;
+    </script>
     
     <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compat.js"></script>
     
     <style>
-        /* WhatsApp-like System Font Stack */
+        /* System Fonts */
         body { 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: #f0f9ff;
-            /* Prevents the whole page from bouncing on iOS */
-            overscroll-behavior-y: none; 
-            touch-action: pan-x pan-y;
+            /* Critical for iOS Keyboard sticking */
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            overscroll-behavior: none;
         }
         
-        /* Chat Container Background */
+        /* Chat BG */
         .chat-bg { 
-            background-image: url('/static/bg.jpg');
-            background-attachment: fixed;
-            background-size: cover; 
-            background-position: center;
-            background-repeat: no-repeat;
             background-color: #e5ddd5; 
+            background-image: radial-gradient(#1e3a8a 0.5px, transparent 0.5px);
+            background-size: 20px 20px;
         }
         
-        /* Message Bubbles */
+        /* Message Styling */
         .msg-sent { 
             background: #1e3a8a; color: white; 
             border-radius: 18px 18px 4px 18px; 
-            max-width: 85%; 
-            align-self: flex-end; 
+            max-width: 85%; align-self: flex-end; 
             box-shadow: 0 1px 2px rgba(0,0,0,0.1); 
         }
         .msg-received { 
             background: #ffffff; color: #1f2937; 
             border-radius: 18px 18px 18px 4px; 
-            max-width: 85%; 
-            align-self: flex-start; 
-            box-shadow: 0 1px 2px rgba(0,0,0,0.05); 
-            border: 1px solid #e5e7eb; 
+            max-width: 85%; align-self: flex-start; 
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05); border: 1px solid #e5e7eb; 
         }
         
         /* Loader */
         @keyframes spin-ring { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .gemini-loader { position: relative; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; }
+        .gemini-loader { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; position: relative; }
         .gemini-ring { position: absolute; width: 100%; height: 100%; border: 3px solid transparent; border-top-color: #1e3a8a; border-right-color: #60a5fa; border-radius: 50%; animation: spin-ring 1s linear infinite; }
         .gemini-logo { width: 24px; height: 24px; object-fit: contain; z-index: 10; }
 
-        /* Utils */
+        /* Actions & Utils */
         .msg-actions { opacity: 0; transition: opacity 0.2s; display: flex; gap: 6px; margin-top: 4px; }
         .msg-wrapper:hover .msg-actions, .msg-wrapper.active .msg-actions { opacity: 1; }
-        .action-btn { padding: 4px 8px; background: #f3f4f6; border-radius: 6px; color: #6b7280; cursor: pointer; font-size: 11px; }
-        .action-btn:hover { background: #e5e7eb; color: #1e3a8a; transform: scale(1.05); }
+        .action-btn { padding: 5px 8px; background: #f3f4f6; border-radius: 6px; color: #6b7280; cursor: pointer; font-size: 12px; }
+        .action-btn:hover { background: #e5e7eb; color: #1e3a8a; }
         .active-school { background-color: #eff6ff; border-left: 4px solid #1e3a8a; }
         .sidebar-transition { transition: transform 0.3s ease-in-out; }
 
-        /* Pulse Animation for Mic */
+        /* Mic Animation */
         @keyframes pulse-red {
-            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-            70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
-            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+            0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7); transform: scale(1); }
+            70% { box-shadow: 0 0 0 10px rgba(220, 38, 38, 0); transform: scale(1.1); }
+            100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); transform: scale(1); }
         }
-        .mic-active {
-            color: #dc2626 !important; /* Red-600 */
-            animation: pulse-red 1.5s infinite;
-        }
+        .mic-active { color: #dc2626 !important; animation: pulse-red 1.5s infinite; }
     </style>
 </head>
 
-<body id="app-body" class="h-[100dvh] flex flex-row font-sans text-gray-800 bg-white overflow-hidden w-full fixed inset-0">
+<body id="main-viewport">
 
-    <button id="install-btn" onclick="installApp()" class="hidden fixed top-4 right-4 z-50 bg-black text-white px-4 py-2 rounded-full shadow-xl font-bold text-xs flex items-center gap-2 border border-gray-700">
+    <button id="install-btn" onclick="installApp()" class="hidden fixed top-4 right-4 z-[60] bg-black text-white px-4 py-2 rounded-full shadow-xl font-bold text-xs flex items-center gap-2 border border-gray-700">
         <i class="fas fa-download"></i> Install App
     </button>
 
     <div id="sidebar-overlay" onclick="closeSidebar()" class="fixed inset-0 bg-black/50 z-40 hidden md:hidden backdrop-blur-sm transition-opacity"></div>
 
-    <div id="sidebar" class="fixed inset-y-0 left-0 w-[280px] bg-white border-r border-gray-200 flex flex-col z-50 transform -translate-x-full md:relative md:translate-x-0 sidebar-transition shadow-2xl md:shadow-none flex-none h-full">
-        <div class="p-4 border-b border-gray-100 bg-gray-50 flex-none">
-            <div class="flex justify-between items-center mb-4">
-                <div class="flex items-center gap-2">
-                    <img src="/static/logo.png" onerror="this.style.display='none'" class="w-8 h-8 rounded-lg object-contain">
-                    <h2 class="font-bold text-lg text-gray-800">VeriCampus <span class="text-blue-800">AI</span></h2>
-                </div>
-                <button onclick="closeSidebar()" class="md:hidden text-gray-500 p-2"><i class="fas fa-times"></i></button>
-            </div>
-            <input type="text" id="search-school" oninput="filterSchools()" placeholder="Search chats..." class="w-full bg-white border border-gray-200 text-gray-700 text-sm rounded-lg pl-4 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-100 transition">
-        </div>
-        
-        <div id="school-list" class="flex-1 overflow-y-auto p-2 space-y-1"></div>
-        
-        <div class="p-4 border-t border-gray-100 space-y-2 flex-none bg-white">
-            <button onclick="showLoginModal()" class="w-full bg-blue-50 text-blue-700 py-3 rounded-xl font-semibold hover:bg-blue-100 transition flex items-center justify-center gap-2 border border-blue-200">
-                <i class="fas fa-plus"></i> Add School
-            </button>
-            <a href="/admin" target="_blank" class="w-full bg-gray-900 text-white py-3 rounded-xl font-semibold hover:bg-gray-800 transition flex items-center justify-center gap-2 text-sm shadow-lg">
-                <i class="fas fa-user-shield"></i> Admin Panel
-            </a>
-        </div>
-    </div>
+    <div id="app-container" class="w-full h-full flex flex-row overflow-hidden relative">
 
-    <div class="flex-1 flex flex-col h-full relative min-w-0">
-        <div class="bg-white/95 backdrop-blur-sm px-4 py-3 shadow-sm flex-none flex items-center justify-between border-b border-gray-100 z-20">
-            <div class="flex items-center gap-3 overflow-hidden">
-                <button onclick="openSidebar()" class="md:hidden text-gray-600 p-1 -ml-2"><i class="fas fa-bars text-xl"></i></button>
-                <div class="flex items-center gap-2">
-                    <img src="/static/logo.png" onerror="this.style.display='none'" class="w-8 h-8 object-contain">
-                    <div class="flex flex-col overflow-hidden">
-                        <h1 class="font-bold text-gray-800 leading-tight truncate text-base" id="header-display-name">Select School</h1>
-                        <p class="text-[10px] text-gray-400 truncate" id="header-real-id">Not Connected</p>
+        <div id="sidebar" class="absolute inset-y-0 left-0 w-[280px] bg-white border-r border-gray-200 flex flex-col z-50 transform -translate-x-full md:relative md:translate-x-0 sidebar-transition shadow-2xl md:shadow-none h-full">
+            <div class="p-4 border-b border-gray-100 bg-gray-50 flex-none">
+                <div class="flex justify-between items-center mb-4">
+                    <div class="flex items-center gap-2">
+                        <img src="/static/logo.png" onerror="this.style.display='none'" class="w-8 h-8 rounded-lg object-contain">
+                        <h2 class="font-bold text-lg text-gray-800">VeriCampus <span class="text-blue-800">AI</span></h2>
+                    </div>
+                    <button onclick="closeSidebar()" class="md:hidden text-gray-500 p-2"><i class="fas fa-times"></i></button>
+                </div>
+                <input type="text" id="search-school" oninput="filterSchools()" placeholder="Search chats..." class="w-full bg-white border border-gray-200 text-gray-700 text-sm rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-100">
+            </div>
+            
+            <div id="school-list" class="flex-1 overflow-y-auto p-2 space-y-1"></div>
+            
+            <div class="p-4 border-t border-gray-100 space-y-2 flex-none bg-white">
+                <button onclick="showLoginModal()" class="w-full bg-blue-50 text-blue-700 py-3 rounded-xl font-semibold hover:bg-blue-100 transition flex items-center justify-center gap-2 border border-blue-200">
+                    <i class="fas fa-plus"></i> Add School
+                </button>
+                <a href="/admin" target="_blank" class="w-full bg-gray-900 text-white py-3 rounded-xl font-semibold hover:bg-gray-800 transition flex items-center justify-center gap-2 text-sm shadow-lg">
+                    <i class="fas fa-user-shield"></i> Admin Panel
+                </a>
+            </div>
+        </div>
+
+        <div class="flex-1 flex flex-col h-full relative min-w-0 bg-white">
+            <div class="bg-white/95 backdrop-blur-sm px-4 py-3 shadow-sm flex-none flex items-center justify-between border-b border-gray-100 z-20">
+                <div class="flex items-center gap-3 overflow-hidden">
+                    <button onclick="openSidebar()" class="md:hidden text-gray-600 p-1 -ml-2"><i class="fas fa-bars text-xl"></i></button>
+                    <div class="flex items-center gap-2">
+                        <img src="/static/logo.png" onerror="this.style.display='none'" class="w-8 h-8 object-contain">
+                        <div class="flex flex-col overflow-hidden">
+                            <h1 class="font-bold text-gray-800 leading-tight truncate text-base" id="header-display-name">Select School</h1>
+                            <p class="text-[10px] text-gray-400 truncate" id="header-real-id">Not Connected</p>
+                        </div>
                     </div>
                 </div>
+                <div class="flex gap-4 text-gray-400">
+                     <button onclick="refreshApp()" title="Refresh App" class="hover:text-blue-600 transition"><i class="fas fa-sync-alt"></i></button>
+                     <button onclick="clearChat()" title="Clear History" class="hover:text-red-500 transition"><i class="fas fa-trash-alt"></i></button>
+                </div>
             </div>
-            <div class="flex gap-4 text-gray-400">
-                 <button onclick="refreshApp()" title="Refresh App" class="hover:text-blue-600 transition"><i class="fas fa-sync-alt"></i></button>
-                 <button onclick="clearChat()" title="Clear History" class="hover:text-red-500 transition"><i class="fas fa-trash-alt"></i></button>
-            </div>
-        </div>
 
-        <div id="chat-box" class="flex-1 overflow-y-auto p-4 space-y-4 flex flex-col chat-bg pb-4 scrolling-touch">
-            <div class="flex flex-col items-center justify-center mt-20 opacity-60 gap-4">
-                <img src="/static/logo.png" onerror="this.style.display='none'" class="w-24 h-24 object-contain opacity-50 grayscale">
-                <p class="text-sm text-gray-500 font-medium">Select a school from the menu</p>
+            <div id="chat-box" class="flex-1 overflow-y-auto p-4 space-y-4 flex flex-col chat-bg pb-4 scrolling-touch">
+                <div class="flex flex-col items-center justify-center mt-20 opacity-60 gap-4">
+                    <img src="/static/logo.png" onerror="this.style.display='none'" class="w-24 h-24 object-contain opacity-50 grayscale">
+                    <p class="text-sm text-gray-500 font-medium">Select a school from the menu</p>
+                </div>
             </div>
-        </div>
 
-        <div class="bg-white p-3 border-t border-gray-200 flex-none z-30 w-full" id="input-container">
-            <div class="flex gap-2 max-w-4xl mx-auto items-end">
-                <div class="flex-1 bg-gray-100 rounded-2xl flex items-center px-4 border border-transparent focus-within:border-blue-300 focus-within:bg-white transition">
-                    <input type="text" id="user-input" 
-                           class="flex-1 bg-transparent border-0 text-sm focus:outline-none text-gray-800 placeholder-gray-500 py-3 max-h-32" 
-                           placeholder="Ask a question..." 
-                           disabled
-                           autocomplete="off"
-                           enterkeyhint="send"
-                           onkeypress="handleEnter(event)">
+            <div class="bg-white p-3 border-t border-gray-200 flex-none z-30 w-full" id="input-bar">
+                <div class="flex gap-2 max-w-4xl mx-auto items-end">
+                    <div class="flex-1 bg-gray-100 rounded-2xl flex items-center px-4 border border-transparent focus-within:border-blue-300 focus-within:bg-white transition">
+                        <input type="text" id="user-input" 
+                               class="flex-1 bg-transparent border-0 text-sm focus:outline-none text-gray-800 placeholder-gray-500 py-3 max-h-32" 
+                               placeholder="Ask a question..." 
+                               disabled
+                               autocomplete="off"
+                               enterkeyhint="send"
+                               onkeypress="handleEnter(event)">
+                        
+                        <button id="mic-btn" onclick="toggleVoice()" class="text-gray-400 hover:text-red-500 transition px-2 py-3 outline-none">
+                            <i class="fas fa-microphone text-lg"></i>
+                        </button>
+                    </div>
                     
-                    <button id="mic-btn" onclick="toggleVoice()" class="text-gray-400 hover:text-red-500 transition px-2 py-3">
-                        <i class="fas fa-microphone text-lg"></i>
+                    <button onclick="sendMessage()" id="send-btn" class="bg-blue-900 text-white w-11 h-11 rounded-full flex-none flex items-center justify-center shadow-lg hover:bg-blue-800 transition transform active:scale-95 disabled:opacity-50" disabled>
+                        <i class="fas fa-paper-plane text-sm pl-0.5"></i>
                     </button>
                 </div>
-                
-                <button onclick="sendMessage()" id="send-btn" class="bg-blue-900 text-white w-11 h-11 rounded-full flex-none flex items-center justify-center shadow-lg hover:bg-blue-800 transition transform active:scale-95 disabled:opacity-50" disabled>
-                    <i class="fas fa-paper-plane text-sm pl-0.5"></i>
-                </button>
             </div>
         </div>
     </div>
@@ -182,26 +182,20 @@
     </div>
 
     <script>
-        // --- 1. iOS KEYBOARD RESIZE FIX (CRITICAL) ---
-        // This calculates the visual viewport height and forces the body to match it.
-        // This pulls the bottom input bar UP when the keyboard opens on iOS.
-        function handleVisualViewportResize() {
-            const appBody = document.getElementById('app-body');
-            const chatBox = document.getElementById('chat-box');
-            
+        // --- 1. iOS KEYBOARD RESIZE LOGIC (Enhanced) ---
+        // This is the secret sauce for the input bar sitting on top of the keyboard
+        function handleViewportResize() {
             if (window.visualViewport) {
-                // Set body height to the visible area (excludes keyboard)
-                appBody.style.height = `${window.visualViewport.height}px`;
-                // Scroll chat to bottom to ensure latest message is visible
-                chatBox.scrollTop = chatBox.scrollHeight;
-                // Force window scroll to top to prevent white space at bottom
+                const appContainer = document.getElementById('app-container');
+                // Resize the container to match the visible area exactly
+                appContainer.style.height = `${window.visualViewport.height}px`;
+                // Scroll the viewport to top to prevent white gaps
                 window.scrollTo(0, 0);
             }
         }
-
         if (window.visualViewport) {
-            window.visualViewport.addEventListener('resize', handleVisualViewportResize);
-            window.visualViewport.addEventListener('scroll', handleVisualViewportResize);
+            window.visualViewport.addEventListener('resize', handleViewportResize);
+            window.visualViewport.addEventListener('scroll', handleViewportResize);
         }
 
         // --- STATE & VARS ---
@@ -213,32 +207,20 @@
         let synth = window.speechSynthesis;
         let speakingMsgId = null; 
 
-        // --- VOICE RECOGNITION (UNIFIED: WEB + IOS + ANDROID) ---
-        // Check for Webkit prefix (Safari/iOS) or standard
+        // --- VOICE RECOGNITION (FIXED TOGGLE) ---
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         let recognition;
         let isListening = false;
 
+        // Initialize Web Recognition
         if (SpeechRecognition) {
             recognition = new SpeechRecognition();
-            recognition.continuous = false; // Stop after one sentence for cleaner mobile exp
+            recognition.continuous = false; 
             recognition.lang = 'en-NG';
-            recognition.interimResults = true; // Show text as you speak
-
-            recognition.onstart = function() {
-                isListening = true;
-                updateMicUI(true);
-            };
-
-            recognition.onend = function() { 
-                isListening = false; 
-                updateMicUI(false); 
-                // Auto-send if there is text
-                const currentText = document.getElementById('user-input').value.trim();
-                if(currentText.length > 1) {
-                    sendMessage();
-                }
-            };
+            recognition.interimResults = true;
+            
+            recognition.onstart = function() { isListening = true; updateMicUI(true); };
+            recognition.onend = function() { stopMicLogic(); }; // Ensure UI resets when it stops itself
             
             recognition.onresult = function(event) {
                 let transcript = '';
@@ -247,84 +229,79 @@
                 }
                 document.getElementById('user-input').value = transcript;
             };
-            
-            recognition.onerror = function(event) { 
-                console.error("Mic Error:", event.error);
-                isListening = false;
-                updateMicUI(false);
-            };
+            recognition.onerror = function(event) { console.log("Mic Error", event); stopMicLogic(); };
         }
 
         async function toggleVoice() {
+            // 1. IF ALREADY LISTENING -> STOP IMMEDIATELY
+            if (isListening) {
+                stopMicLogic();
+                // If using Capacitor, force stop there too
+                if(window.Capacitor) {
+                    try { await Capacitor.Plugins.SpeechRecognition.stop(); } catch(e){}
+                } else if (recognition) {
+                    recognition.stop();
+                }
+                return;
+            }
+
+            // 2. START LISTENING
             const input = document.getElementById('user-input');
+            input.value = ""; // Clear input
             
-            // 1. CAPACITOR (ANDROID APK)
             if (window.Capacitor) {
+                // --- APK LOGIC ---
                 try {
-                    const CapacitorSpeech = Capacitor.Plugins.SpeechRecognition;
-                    // Check permissions
-                    const perm = await CapacitorSpeech.checkPermissions();
+                    const CapSpeech = Capacitor.Plugins.SpeechRecognition;
+                    const perm = await CapSpeech.checkPermissions();
                     if (perm.speechRecognition !== 'granted') {
-                        await CapacitorSpeech.requestPermissions();
+                        await CapSpeech.requestPermissions();
                     }
                     
-                    if (isListening) {
-                        await CapacitorSpeech.stop();
-                        isListening = false;
-                        updateMicUI(false);
-                    } else {
-                        isListening = true;
-                        updateMicUI(true);
-                        
-                        CapacitorSpeech.start({
-                            language: "en-NG",
-                            maxResults: 1,
-                            prompt: "Speak your question...",
-                            partialResults: true,
-                            popup: false
-                        }).catch(e => {
-                            updateMicUI(false);
-                            alert("Mic failed to start on App");
-                        });
+                    isListening = true;
+                    updateMicUI(true); // Turn Red Immediately
 
-                        CapacitorSpeech.addListener('partialResults', (data) => {
-                             if (data.matches && data.matches.length > 0) {
-                                input.value = data.matches[0];
-                            }
-                        });
-                    }
+                    // Listen for results
+                    CapSpeech.addListener('partialResults', (data) => {
+                         if (data.matches && data.matches.length > 0) input.value = data.matches[0];
+                    });
+
+                    await CapSpeech.start({
+                        language: "en-NG",
+                        maxResults: 1,
+                        prompt: "Speak now...",
+                        partialResults: true,
+                        popup: false
+                    });
+                    
+                    // Note: Capacitor doesn't always fire an 'end' event reliably on all phones
+                    // So we rely on the user tapping the red button to stop, or silence timeout.
+
                 } catch (e) {
-                    console.error(e);
-                    // Fallback to web logic if capacitor plugin missing
+                    stopMicLogic();
+                    alert("App Mic Error: " + JSON.stringify(e));
                 }
-            } 
-            // 2. WEB BROWSER (IOS/CHROME)
-            else {
-                if (!recognition) {
-                    alert("Voice input not supported on this browser.");
-                    return;
-                }
-                if (isListening) {
-                    recognition.stop();
-                } else {
-                    try {
-                        recognition.start();
-                    } catch(e) {
-                        recognition.stop(); // Reset if stuck
-                        setTimeout(() => recognition.start(), 200);
-                    }
-                }
+            } else {
+                // --- WEB LOGIC ---
+                if (!recognition) { alert("Mic not supported"); return; }
+                try { recognition.start(); } catch(e) { recognition.stop(); setTimeout(()=>recognition.start(), 200); }
             }
+        }
+
+        function stopMicLogic() {
+            isListening = false;
+            updateMicUI(false);
+            // If there is text, send it automatically? Optional.
+            // For now, we just leave the text there for the user to review.
         }
 
         function updateMicUI(active) {
             const micBtn = document.getElementById('mic-btn');
             const input = document.getElementById('user-input');
-            
             if (active) {
                 micBtn.classList.remove('text-gray-400');
-                micBtn.classList.add('mic-active'); // Uses CSS animation
-                input.placeholder = "Listening... Speak now";
+                micBtn.classList.add('mic-active');
+                input.placeholder = "Listening... (Tap mic to stop)";
             } else {
                 micBtn.classList.remove('mic-active');
                 micBtn.classList.add('text-gray-400');
@@ -335,18 +312,8 @@
         // --- INSTALL LOGIC ---
         let deferredPrompt;
         const installBtn = document.getElementById('install-btn');
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredPrompt = e;
-            installBtn.classList.remove('hidden');
-        });
-        async function installApp() {
-            if (!deferredPrompt) return;
-            deferredPrompt.prompt();
-            const { outcome } = await deferredPrompt.userChoice;
-            if (outcome === 'accepted') installBtn.classList.add('hidden');
-            deferredPrompt = null;
-        }
+        window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; installBtn.classList.remove('hidden'); });
+        async function installApp() { if (!deferredPrompt) return; deferredPrompt.prompt(); const { outcome } = await deferredPrompt.userChoice; if (outcome === 'accepted') installBtn.classList.add('hidden'); deferredPrompt = null; }
 
         renderSidebar();
         if(schools.length > 0) selectSchool(schools[0]); else showLoginModal();
@@ -412,35 +379,19 @@
             if(window.innerWidth < 768) closeSidebar();
             renderSidebar();
             loadChatHistory();
-
-            // NOTIFICATIONS (Hybrid)
-            if (window.Capacitor) {
-                // ... Existing Capacitor Notification Logic ...
-                // Keeping your original logic minimal here for brevity
-            } else {
-                initWebNotifications(school.id);
-            }
+            if (!window.Capacitor) initWebNotifications(school.id);
         }
 
         async function initWebNotifications(topicId) {
              try {
-                // Initialize Firebase Messaging (Web)
-                const firebaseConfig = {
-                    apiKey: "AIzaSyADy57398AgmjhkaTUvTQpRQ1hdCijGgvs",
-                    projectId: "vericampus-13104",
-                    appId: "1:762945690586:web:66e6a7fc5a524cb2c93ee3",
-                    messagingSenderId: "762945690586"
-                };
+                const firebaseConfig = { apiKey: "AIzaSyADy57398AgmjhkaTUvTQpRQ1hdCijGgvs", projectId: "vericampus-13104", appId: "1:762945690586:web:66e6a7fc5a524cb2c93ee3", messagingSenderId: "762945690586" };
                 if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
                 const messaging = firebase.messaging();
                 const reg = await navigator.serviceWorker.register('/static/firebase-messaging-sw.js');
                 const permission = await Notification.requestPermission();
                 if(permission === 'granted') {
                     const token = await messaging.getToken({ vapidKey: "BJlKbEwKwIv-JksOVjgKRimUu6VSC9eaoOSbsGjCJafMUW4bTWvDtR5ssc7Uvx3BWj3A9sYtdaWSqRrX3ovaSIU", serviceWorkerRegistration: reg });
-                    if(token) {
-                         const fd = new FormData(); fd.append('token', token); fd.append('topic', topicId.toUpperCase());
-                         fetch('/subscribe-web', { method: 'POST', body: fd });
-                    }
+                    if(token) { const fd = new FormData(); fd.append('token', token); fd.append('topic', topicId.toUpperCase()); fetch('/subscribe-web', { method: 'POST', body: fd }); }
                 }
              } catch(e) { console.log("Web Note Error", e); }
         }
@@ -465,10 +416,10 @@
         function renderUserMsg(text, time, idx) { return `<div id="msg-wrapper-${idx}" class="msg-wrapper w-full flex flex-col items-end group" onclick="this.classList.toggle('active')"><div class="msg-sent p-3 px-4"><p class="text-sm leading-relaxed">${text}</p><span class="text-[10px] text-blue-200 block text-right mt-1">${time}</span></div><div class="msg-actions mr-1"><button onclick="editMessage('${text}', ${idx})" class="action-btn" title="Edit"><i class="fas fa-pen"></i></button><button onclick="copyText('${text}')" class="action-btn" title="Copy"><i class="fas fa-copy"></i></button></div></div>`; }
         
         function renderAIMsg(text, time, idx) { 
-            // Escape text for onclick handler
             const safeText = text.replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, ' '); 
             const btnId = `speak-btn-${idx}`; 
             
+            // Re-added Thumbs Up/Down
             return `<div id="msg-wrapper-${idx}" class="msg-wrapper w-full flex flex-col items-start group" onclick="this.classList.toggle('active')">
                 <div class="msg-received p-3 px-4">
                     <p class="text-sm leading-relaxed">${text}</p>
@@ -478,6 +429,8 @@
                     <button id="${btnId}" onclick="toggleSpeech('${safeText}', '${btnId}')" class="action-btn" title="Read Aloud"><i class="fas fa-volume-up"></i></button>
                     <button onclick="copyText('${safeText}')" class="action-btn" title="Copy"><i class="fas fa-copy"></i></button>
                     <button onclick="regenerate(${idx})" class="action-btn" title="Regenerate"><i class="fas fa-redo"></i></button>
+                    <button onclick="feedback(this, 'good')" class="action-btn" title="Good"><i class="fas fa-thumbs-up"></i></button>
+                    <button onclick="feedback(this, 'bad')" class="action-btn" title="Bad"><i class="fas fa-thumbs-down"></i></button>
                     <button onclick="shareText('${safeText}')" class="action-btn" title="Share"><i class="fas fa-share-alt"></i></button>
                 </div>
             </div>`; 
@@ -485,58 +438,106 @@
 
         function copyText(text) { navigator.clipboard.writeText(text).then(() => alert("Copied!")); }
         
-        // --- IMPROVED TEXT TO SPEECH ---
-        function toggleSpeech(text, btnId) { 
-            // 1. If speaking same text, STOP.
-            if (speakingMsgId === btnId && synth.speaking) { 
-                synth.cancel(); 
+        // --- READ ALOUD (APK FIX) ---
+        async function toggleSpeech(text, btnId) { 
+            const btn = document.getElementById(btnId);
+            const clean = text.replace(/<br>/g, ' ');
+
+            // STOP LOGIC
+            if (speakingMsgId === btnId) { 
+                if(window.Capacitor) {
+                    try { await Capacitor.Plugins.TextToSpeech.stop(); } catch(e) { synth.cancel(); }
+                } else {
+                    synth.cancel();
+                }
                 speakingMsgId = null; 
-                resetSpeakIcon(btnId); 
+                if(btn) { btn.innerHTML = '<i class="fas fa-volume-up"></i>'; btn.classList.remove('active'); }
                 return; 
             } 
             
-            // 2. Stop any existing speech first
-            synth.cancel(); 
-            if (speakingMsgId) resetSpeakIcon(speakingMsgId);
+            // START LOGIC
+            // Reset previous icon if any
+            if(speakingMsgId) { const prev = document.getElementById(speakingMsgId); if(prev) { prev.innerHTML = '<i class="fas fa-volume-up"></i>'; prev.classList.remove('active'); } }
             
-            // 3. Start new speech
-            const clean = text.replace(/<br>/g, ' '); 
-            const utterance = new SpeechSynthesisUtterance(clean); 
-            utterance.lang = "en-GB"; // Better accent for education
-            
-            const btn = document.getElementById(btnId);
-            if(btn) { 
-                btn.innerHTML = '<i class="fas fa-stop text-red-500"></i>'; 
-                btn.classList.add('active'); 
-                speakingMsgId = btnId; 
+            // Set current active
+            if(btn) { btn.innerHTML = '<i class="fas fa-stop text-red-500"></i>'; btn.classList.add('active'); }
+            speakingMsgId = btnId;
+
+            // TRY CAPACITOR TTS (APK) FIRST
+            if (window.Capacitor) {
+                 try {
+                     const TTS = Capacitor.Plugins.TextToSpeech;
+                     await TTS.speak({
+                        text: clean,
+                        lang: 'en-GB',
+                        rate: 1.0,
+                        pitch: 1.0,
+                        volume: 1.0,
+                        category: 'ambient',
+                     });
+                     // When done (Capacitor await finishes when speech is done usually)
+                     if(btn) { btn.innerHTML = '<i class="fas fa-volume-up"></i>'; btn.classList.remove('active'); }
+                     speakingMsgId = null;
+                 } catch (e) {
+                     console.log("Capacitor TTS failed, falling back to Web");
+                     webSpeechFallback(clean, btnId);
+                 }
+            } else {
+                webSpeechFallback(clean, btnId);
             }
-            
-            utterance.onend = () => { 
-                resetSpeakIcon(btnId);
-                speakingMsgId = null; 
-            }; 
-            
-            synth.speak(utterance); 
         }
 
-        function resetSpeakIcon(btnId) {
-            const btn = document.getElementById(btnId);
-            if(btn) {
-                btn.innerHTML = '<i class="fas fa-volume-up"></i>';
-                btn.classList.remove('active');
-            }
+        function webSpeechFallback(text, btnId) {
+             synth.cancel();
+             const utterance = new SpeechSynthesisUtterance(text);
+             utterance.lang = "en-GB";
+             utterance.onend = () => { 
+                const btn = document.getElementById(btnId);
+                if(btn) { btn.innerHTML = '<i class="fas fa-volume-up"></i>'; btn.classList.remove('active'); }
+                speakingMsgId = null; 
+             };
+             synth.speak(utterance);
+        }
+
+        function feedback(btn, type) { 
+            btn.classList.toggle('text-green-500'); 
+            btn.classList.toggle('active'); 
+            // Optional: Send feedback to backend
         }
 
         function editMessage(oldText, index) { const input = document.getElementById('user-input'); input.value = oldText; input.focus(); chatHistory[currentSchoolObj.id].splice(index, 2); saveData(); loadChatHistory(); }
         function regenerate(aiIndex) { const userIndex = aiIndex - 1; if(userIndex >= 0) { const userText = chatHistory[currentSchoolObj.id][userIndex].text; chatHistory[currentSchoolObj.id].splice(aiIndex, 1); saveData(); loadChatHistory(); sendMessage(userText, true); } }
         
-        // --- IMPROVED SHARE ---
-        function shareText(text) { 
+        // --- SHARE (APK FIX) ---
+        async function shareText(text) { 
             const cleanText = text.replace(/<br>/g, '\n');
-            if (navigator.share) { 
-                navigator.share({ title: 'VeriCampus Answer', text: cleanText })
-                .catch(err => console.log('Share failed:', err));
-            } else { 
+            
+            // 1. Try Native Share (Android/APK)
+            if (navigator.share) {
+                try {
+                    await navigator.share({
+                        title: 'VeriCampus Answer',
+                        text: cleanText,
+                    });
+                } catch (err) {
+                    console.log('Share API Error or Cancelled', err);
+                    copyText(cleanText); // Fallback
+                }
+            } 
+            // 2. Try Capacitor Share specifically (Sometimes distinct from navigator.share)
+            else if (window.Capacitor) {
+                 try {
+                     await Capacitor.Plugins.Share.share({
+                        title: 'VeriCampus Answer',
+                        text: cleanText,
+                        dialogTitle: 'Share with buddies',
+                     });
+                 } catch(e) {
+                     copyText(cleanText);
+                 }
+            }
+            // 3. Fallback
+            else { 
                 copyText(cleanText); 
             } 
         }
@@ -552,8 +553,6 @@
             if (!skipUserAdd) { saveMessage('user', message); loadChatHistory(); } 
             
             input.value = ''; 
-            input.style.height = 'auto'; // Reset height if it grew
-            
             setTimeout(() => chatBox.scrollTop = chatBox.scrollHeight, 50); 
             
             const loadingId = "loading-" + Date.now(); 
